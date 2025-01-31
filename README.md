@@ -3,6 +3,7 @@ Cloud Layers Unified By Binormals and Equation Discovery (CLUBBED) is an equatio
 
 CLUBB (github.com/larson-group/clubb_release) is principally developed by the research group of Vince Larson and subject to the following copyright.
 
+```
 ********************************************************************************
 *                           Copyright Notice
 *                       This code is (C) 2006-2024
@@ -16,5 +17,5 @@ CLUBB (github.com/larson-group/clubb_release) is principally developed by the re
 *         property of their respective authors as noted and are also 
 *         subject to copyright. 
 ********************************************************************************
-
+```
 
