@@ -1,0 +1,22 @@
+name: clubbed
+channels:
+  - pytorch
+  - conda-forge
+  - defaults
+dependencies:
+  - python 
+  - numpy
+  - scipy
+  - matplotlib
+  - xarray
+  - netcdf4
+  - h5netcdf
+  - packaging
+  - ipykernel
+  - pytorch
+  - torchvision
+  - torchaudio
+  - cudatoolkit
+  - pandas
+  - scikit-learn
+  - pip

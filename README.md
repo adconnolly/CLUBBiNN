@@ -19,3 +19,13 @@ CLUBB (github.com/larson-group/clubb_release) is principally developed by the re
 ********************************************************************************
 ```
 
+# subgrid_parameterization
+Template for a general workflow for the construction of ML subgrid parameterizations.
+
+Install using:
+
+`pip install .`
+
+For development (preferred option for now), create an editable install using:
+
+`pip install -e .` 
