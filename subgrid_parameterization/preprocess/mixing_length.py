@@ -14,9 +14,10 @@ def compute_mixing_length(nzm, nzt, ngrdcol, zm, zt, dzm, dzt, invrs_dzm, invrs_
     grav = 9.81  # gravitational acceleration
     cp = 1004.0  # Specific heat capacity of air at constant pressure
     Rd = 287.0  # Gas constant for dry air
+    Rv = 461.0  # Gas constant for dry air
     Lv = 2.5e6   # Latent heat of vaporization
     eps = 1e-6   # Small threshold value
-    ep = Rd / (Lv / cp)
+    ep = Rd / Rv
     ep1 = (1 - ep) / ep
     ep2 = 1 / ep
     
@@ -71,10 +72,11 @@ def compute_mixing_length(nzm, nzt, ngrdcol, zm, zt, dzm, dzt, invrs_dzm, invrs_
     dCAPE_dz_1 = grav_on_thvm * ( thv_par_1 - thvm )
 
     CAPE_incr_1 = 0.5 * dCAPE_dz_1 * dzm[:,1:]
-        
+
     for i in range(ngrdcol):
         Lscale_up_max_alt = 0.0  # Initial max height for upward mixing
         for k in range(nzt - 2):
+
             if tke_i[i, k] + CAPE_incr_1[i, k + 1] > 0.0:
                 tke = tke_i[i, k] + CAPE_incr_1[i, k + 1]
                 j = k + 2
@@ -105,7 +107,7 @@ def compute_mixing_length(nzm, nzt, ngrdcol, zm, zt, dzm, dzt, invrs_dzm, invrs_
                     dCAPE_dz_j = grav_on_thvm[i, j] * (thv_par_j - thvm[i, j])
 
                     CAPE_incr = 0.5 * (dCAPE_dz_j + dCAPE_dz_j_minus_1) * dzm[i, j]
-                    
+
                     if tke + CAPE_incr <= 0:
                         break
 
@@ -115,14 +117,15 @@ def compute_mixing_length(nzm, nzt, ngrdcol, zm, zt, dzm, dzt, invrs_dzm, invrs_
                     
                     j += 1
 
-                Lscale_up[i, k] += zt[i, j - 1] - zt[i, k]
+                Lscale_up[i, k] += zt[i, j - 1] - zt[i, k] #'Case 1.1'
 
                 if j < nzt-1:
                     if ( np.abs( dCAPE_dz_j - dCAPE_dz_j_minus_1 ) * 2 <= \
                          np.abs( dCAPE_dz_j + dCAPE_dz_j_minus_1 ) * eps ):
                         Lscale_up[i, k] += (-tke / dCAPE_dz_j)
-                        # print('if 1')
+                        # print('Case 1.2')
                         # print(Lscale_up[i])
+                        # print(Lscale_up[i,k])
                     else:
                         invrs_dCAPE_diff = 1.0 / ( dCAPE_dz_j - dCAPE_dz_j_minus_1 )
                         
@@ -130,20 +133,30 @@ def compute_mixing_length(nzm, nzt, ngrdcol, zm, zt, dzm, dzt, invrs_dzm, invrs_
                                          - np.sqrt( dCAPE_dz_j_minus_1**2 - 2.0 * tke * invrs_dzm[i,j] \
                                             * ( dCAPE_dz_j - dCAPE_dz_j_minus_1 ) ) \
                                          * invrs_dCAPE_diff  * dzm[i,j]
-                        # print('if 2')
+                        # print('Case 1.3')
                         # print(Lscale_up[i])
+                        # print(Lscale_up[i,k])
 
+                # print('Case 1.1')
+                # print(Lscale_up[i])
+                # print(Lscale_up[i,k])
+            
             else:
                 Lscale_up[i,k] += - np.sqrt( -2.0 * tke_i[i,k] * dzm[i,k+1] * dCAPE_dz_1[i,k+1]  ) \
                                     / dCAPE_dz_1[i,k+1]
-                    # print('if 3')
-                    # print(Lscale_up[i])
-                
+                # print('Case 2')
+                # print(Lscale_up[i])
+                # print(Lscale_up[i,k])
+            
             if zt[i, k] + Lscale_up[i, k] < Lscale_up_max_alt:
                 Lscale_up[i, k] = Lscale_up_max_alt - zt[i, k]
+                # print('Nonlocal')
+                # print(Lscale_up[i])
             else:
                 Lscale_up_max_alt = Lscale_up[i, k] + zt[i, k]
-
+                # print('Local')
+                # print(Lscale_up[i])
+            # print('max now'+str(Lscale_up_max_alt))
     
     ## Downward Mixing Length Calculation
 
@@ -264,12 +277,3 @@ def sat_mixrat_liq(T, p):
     es = 6.112 * np.exp((17.67 * (T - 273.15)) / (T - 29.65)) * 100  # Convert hPa to Pa
     epsilon = 0.622  # Ratio of molecular weights (water vapor/dry air)
     return epsilon * es / (p - es)
-
-def dqsat_dT(T, p):
-    """
-    Derivative of saturation mixing ratio with respect to temperature.
-    """
-    es = 6.112 * np.exp((17.67 * (T - 273.15)) / (T - 29.65)) * 100  # Convert hPa to Pa
-    des_dT = es * (17.67 * 243.5) / ((T - 29.65)**2)  # Derivative of es w.r.t T
-    epsilon = 0.622
-    return epsilon * des_dT / (p - es) - epsilon * es * des_dT / (p - es)**2
