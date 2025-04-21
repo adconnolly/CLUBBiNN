@@ -53,7 +53,12 @@ def stagger_var(var_str, ds, z='zt'):
     else:
         vals=ds[var_str].squeeze().values
 
-    return interp1d(ds['z'].values,vals,axis=1,fill_value='extrapolate')(z)
+    if len(z.shape)==1:
+        return interp1d(ds['z'].values,vals,axis=1,fill_value='extrapolate')(z)
+    else:
+        assert len(z.shape)==2
+        assert (np.diff(z,axis=0)==0).all() # non-constant grid not implemented yet
+        return interp1d(ds['z'].values,vals,axis=1,fill_value='extrapolate')(z[0])
 
 def expand(u, ngrdcol):
     try:
