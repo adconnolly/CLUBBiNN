@@ -9,15 +9,34 @@ def get_mixing_length(ds):
     thlm = sam.stagger_var('THETAL',ds,zt)
     rtm = sam.stagger_var('RTM',ds,zt)
 
-    Lscale_max = 0.25*64*100 # 64 pts * 100 m dx_LES = dx_GCM, CLUBB takes 1/4 this for max when implemented
-
     U2 = sam.stagger_var('U2',ds,zm)
     V2 = sam.stagger_var('V2',ds,zm)
     W2 = sam.stagger_var('W2',ds,zm)
     em = 0.5*np.sqrt(U2 + V2 + W2)
 
-    
+    Lscale_max = 0.25*64*100 # 64 pts * 100 m dx_LES = dx_GCM, CLUBB takes 1/4 this for max when implemented
 
+    p_in_Pa = sam.stagger_var('p',ds,'zt')*100 # p in mb * 10^-3 bar/mb * 10^5 Pa/bar 
+
+    cp = 1004.0  # Specific heat capacity of air at constant pressure
+    Rd = 287.0  # Gas constant for dry air
+    exner = (p_in_Pa/10**5)**(Rd/cp) 
+
+    thv_ds = sam.stagger_var('THETA',ds,'zt')*(1+0.608*rtm)
+
+    mu = np.full(ngrdcol,1.e-3)
+
+    lmin = 20.0
+
+    saturation_formula = 1
+    l_implemented = True
+
+    Lscale, Lscale_up, Lscale_down = compute_mixing_length(nzm, nzt, ngrdcol, zm, zt, dzm, dzt, invrs_dzm, invrs_dzt, 
+                      thvm, thlm, rtm, em, Lscale_max, p_in_Pa, exner, thv_ds,
+                      mu, lmin, saturation_formula, l_implemented)
+
+    return Lscale, Lscale_up, Lscale_down
+    
 
 def compute_mixing_length(nzm, nzt, ngrdcol, zm, zt, dzm, dzt, invrs_dzm, invrs_dzt, 
                           thvm, thlm, rtm, em, 
