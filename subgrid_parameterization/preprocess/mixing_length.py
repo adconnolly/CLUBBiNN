@@ -1,4 +1,23 @@
 import numpy as np
+from subgrid_parameterization.preprocess import SAM_helpers as sam
+
+def get_mixing_length(ds):
+    
+    nzm, nzt, ngrdcol, zm, zt, dzm, dzt, invrs_dzm, invrs_dzt = sam.get_grid(ds)
+    
+    thvm = sam.stagger_var('THETAV',ds,zt)
+    thlm = sam.stagger_var('THETAL',ds,zt)
+    rtm = sam.stagger_var('RTM',ds,zt)
+
+    Lscale_max = 0.25*64*100 # 64 pts * 100 m dx_LES = dx_GCM, CLUBB takes 1/4 this for max when implemented
+
+    U2 = sam.stagger_var('U2',ds,zm)
+    V2 = sam.stagger_var('V2',ds,zm)
+    W2 = sam.stagger_var('W2',ds,zm)
+    em = 0.5*np.sqrt(U2 + V2 + W2)
+
+    
+
 
 def compute_mixing_length(nzm, nzt, ngrdcol, zm, zt, dzm, dzt, invrs_dzm, invrs_dzt, 
                           thvm, thlm, rtm, em, 
