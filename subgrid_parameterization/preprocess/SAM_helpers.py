@@ -1,6 +1,44 @@
 import numpy as np
 from scipy.interpolate import interp1d
 
+def get_TKE(ds, z='zt'):
+
+    if isinstance(z, str):
+        _, _, _, _, zt, _, _, _, _ = sam.get_grid(ds)
+    
+    U2 = stagger_var('U2',ds,zt)
+    V2 = stagger_var('V2',ds,zt)
+    W2 = stagger_var('W2',ds,zt)
+    return 0.5*np.sqrt(U2 + V2 + W2)
+
+def get_disp(ds, z='zt'):
+
+    if isinstance(z, str):
+        _, _, _, _, zt, _, _, _, _ = sam.get_grid(ds)
+
+    U2DFSN = stagger_var('U2DFSN',ds,zt)
+    V2DFSN = stagger_var('V2DFSN',ds,zt)
+    return 0.5 * ( U2DFSN + V2DFSN )  
+
+def stagger_var(var_str, ds, z='zt'):
+    if isinstance(z, str):
+        if z=='zm':
+            _, _, z, _, _, _, _, _ = stagger_grid(ds)
+        else: # Default to zt
+            _, _, _, z, _, _, _, _ = stagger_grid(ds)
+    
+    if var_str=='p':
+        vals=expand(ds[var_str].squeeze().values, ds)
+    else:
+        vals=ds[var_str].squeeze().values
+
+    if len(z.shape)==1:
+        return interp1d(ds['z'].values,vals,axis=1,fill_value='extrapolate')(z)
+    else:
+        assert len(z.shape)==2
+        assert (np.diff(z,axis=0)==0).all() # non-constant grid not implemented yet
+        return interp1d(ds['z'].values,vals,axis=1,fill_value='extrapolate')(z[0])
+
 def get_grid(ds,time_for_space=True):
 
     nzm, nzt, zmv, ztv, dzmv, dztv, invrs_dzmv, invrs_dztv = stagger_grid(ds)
@@ -40,25 +78,6 @@ def stagger_grid(z):
     invrs_dzt = 1.0/dzt
     
     return nzm, nzt, zm, zt, dzm, dzt, invrs_dzm, invrs_dzt
-
-def stagger_var(var_str, ds, z='zt'):
-    if isinstance(z, str):
-        if z=='zm':
-            _, _, z, _, _, _, _, _ = stagger_grid(ds)
-        else: # Default to zt
-            _, _, _, z, _, _, _, _ = stagger_grid(ds)
-    
-    if var_str=='p':
-        vals=expand(ds[var_str].squeeze().values, ds)
-    else:
-        vals=ds[var_str].squeeze().values
-
-    if len(z.shape)==1:
-        return interp1d(ds['z'].values,vals,axis=1,fill_value='extrapolate')(z)
-    else:
-        assert len(z.shape)==2
-        assert (np.diff(z,axis=0)==0).all() # non-constant grid not implemented yet
-        return interp1d(ds['z'].values,vals,axis=1,fill_value='extrapolate')(z[0])
 
 def expand(u, ngrdcol):
     try:
