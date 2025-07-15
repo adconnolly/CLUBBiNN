@@ -278,7 +278,7 @@ def compute_mixing_length(nzm, nzt, ngrdcol, zm, zt, dzm, dzt, invrs_dzm, invrs_
                         invrs_dCAPE_diff = 1.0 / ( dCAPE_dz_j - dCAPE_dz_j_plus_1 )
                         
                         Lscale_down[i,k] += -dCAPE_dz_j_plus_1 * invrs_dCAPE_diff * dzm[i,j+1] \
-                                         + np.sqrt( dCAPE_dz_j_minus_1**2 + 2.0 * tke * invrs_dzm[i,j+1] \
+                                         + np.sqrt( dCAPE_dz_j_plus_1**2 + 2.0 * tke * invrs_dzm[i,j+1] \
                                             * ( dCAPE_dz_j - dCAPE_dz_j_plus_1 ) ) \
                                          * invrs_dCAPE_diff  * dzm[i,j+1]                    
 
