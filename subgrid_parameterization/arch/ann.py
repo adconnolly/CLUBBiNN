@@ -6,14 +6,18 @@ import itertools
 
 
 ## Construct a convolutional block
-def make_layer(in_features: int, out_features: int, activation=torch.nn.ReLU, batch_norm=False, bias=False) -> list:
-    '''
+def make_layer(
+    in_features: int,
+    out_features: int,
+    activation=torch.nn.ReLU,
+    batch_norm=False,
+    bias=False,
+) -> list:
+    """
     Packs ANN layer and optionally ReLU/BatchNorm2d
     layers in a list
-    '''
-    layer = [
-        torch.nn.Linear(in_features, out_features, bias=bias)
-    ]
+    """
+    layer = [torch.nn.Linear(in_features, out_features, bias=bias)]
     if activation is not None:
         layer.append(activation())
     if batch_norm:
@@ -23,9 +27,9 @@ def make_layer(in_features: int, out_features: int, activation=torch.nn.ReLU, ba
 
 class ANN(torch.nn.Module):
     def __init__(self, N, activation=torch.nn.ReLU):
-        '''
+        """
         Packs sequence of artificial neural network layers in a list.
-        '''
+        """
         super().__init__()
         ops = []
         # Following recipe for itertools.pairwise
@@ -57,14 +61,15 @@ class ANN(torch.nn.Module):
         # Bundle into Sequential for forward pass
         self.ops = torch.nn.Sequential(*ops)
 
-    def forward(self,x):
+    def forward(self, x):
         return self.ops(x)
 
+
 class clipped_ANN(torch.nn.Module):
-    def __init__(self, N, range=[0,2], activation=torch.nn.ReLU):
-        '''
+    def __init__(self, N, range=[0, 2], activation=torch.nn.ReLU):
+        """
         Packs sequence of artificial neural network layers in a list.
-        '''
+        """
         super().__init__()
         ops = []
         # Following recipe for itertools.pairwise
@@ -99,5 +104,5 @@ class clipped_ANN(torch.nn.Module):
         self.min = range[0]
         self.max = range[1]
 
-    def forward(self,x):
-        return self.ops(x).clamp(min = self.min, max = self.max) 
+    def forward(self, x):
+        return self.ops(x).clamp(min=self.min, max=self.max)
