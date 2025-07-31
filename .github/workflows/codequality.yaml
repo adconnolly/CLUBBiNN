@@ -1,0 +1,59 @@
+# Workflow to run code-quality checks on the source
+name: code-quality
+
+env:
+    venv_name: work_env
+
+# When will this workflow run?
+on:
+  # run on every push to main, i.e. PR merges
+  push:
+    branches: [ "main" ]
+
+  # Triggers the workflow on pushes to open pull requests with code changes
+  pull_request:
+    paths:
+      - '**.py'
+      - '**.ipynb'
+      - '.github/workflows/codequality.yaml'
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# Since the repository is private we need to allow the workflow  to read its
+# contents.
+permissions:
+    contents: read
+
+jobs:
+  code-quality:
+    name: Run code quality checks
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+
+    steps:
+    # Checks-out repository under $GITHUB_WORKSPACE, so job can access it
+    - name: Checkout code
+      with:
+        persist-credentials: false
+      uses: actions/checkout@v3
+
+    - name: Install Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.x'
+
+    - name: Install Package and Dependencies
+      run: |
+        cd ${{ github.workspace }}
+        python -m pip install --upgrade pip
+        python -m venv ${{env.venv_name}}
+        . ${{env.venv_name}}/bin/activate
+        pip install ruff
+
+    - name: ruff format
+      run: |
+        cd ${{ github.workspace }}
+        . ${{env.venv_name}}/bin/activate
+        ruff format --diff .
