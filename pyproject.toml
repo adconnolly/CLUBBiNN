@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools >= 77.0.3"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "subgrid_parameterization"
+version = "0.0.1"
+description = "ML optimisation framework for subgrid forcing"
+authors = [
+    {name = "Alexander Connolly"}
+]
+readme = "README.md"
+license-files = ["LICENSE"]
+dependencies = [
+    "torch",
+    "numpy",
+    "scipy",
+    "scikit-learn",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff",
+    "pre-commit~=4.2"
+]
+notebooks = [
+    "notebook",
+    "ipython",
+    "ipykernel",
+    "xarray",
+    "matplotlib",
+]
+
