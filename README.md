@@ -29,3 +29,23 @@ Install using:
 For development (preferred option for now), create an editable install using:
 
 `pip install -e .` 
+
+# Pre-commit hooks
+The project uses [`pre-commit`](https://pre-commit.com/) to allow easy 
+configuration of pre-commit git hooks. They can automatically run the linting 
+and formatting on the files that are staged for commit. To install the
+ pre-commit hooks, first install the package:
+
+```bash
+pip install pre-commit
+```
+Or if you are installing the package in editable mode for development
+the `pre-commit` will be included in the `dev` dependencies.
+
+Then, run the following command to install the hooks:
+
+```bash
+pre-commit install
+```
+
+Now the formatting and linting will be applied on each commit. 
