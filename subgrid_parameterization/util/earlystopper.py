@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 
+
 class EarlyStopper:
     def __init__(self, patience=1, min_delta=0):
         self.patience = patience
@@ -17,4 +18,3 @@ class EarlyStopper:
             if self.counter >= self.patience:
                 return True
         return False
-
