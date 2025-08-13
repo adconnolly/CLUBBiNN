@@ -9,7 +9,7 @@ def get_TKE(ds, z="zt"):
     U2 = stagger_var("U2", ds, zt)
     V2 = stagger_var("V2", ds, zt)
     W2 = stagger_var("W2", ds, zt)
-    return 0.5 * np.sqrt(U2 + V2 + W2)
+    return 0.5 * (U2 + V2 + W2)
 
 
 def get_disp(ds, z="zt"):

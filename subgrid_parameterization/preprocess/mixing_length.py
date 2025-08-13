@@ -12,7 +12,7 @@ def get_mixing_length(ds):
     U2 = sam.stagger_var("U2", ds, zm)
     V2 = sam.stagger_var("V2", ds, zm)
     W2 = sam.stagger_var("W2", ds, zm)
-    em = 0.5 * np.sqrt(U2 + V2 + W2)
+    em = 0.5 * (U2 + V2 + W2)
 
     Lscale_max = (
         0.25 * 64 * 100
@@ -95,7 +95,7 @@ def compute_mixing_length(
     grav = 9.81  # gravitational acceleration
     cp = 1004.0  # Specific heat capacity of air at constant pressure
     Rd = 287.0  # Gas constant for dry air
-    Rv = 461.0  # Gas constant for dry air
+    Rv = 461.0  # Gas constant for water vapor
     Lv = 2.5e6  # Latent heat of vaporization
     eps = 1e-6  # Small threshold value
     ep = Rd / Rv
