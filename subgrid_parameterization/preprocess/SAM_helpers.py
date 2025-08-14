@@ -4,7 +4,7 @@ from scipy.interpolate import interp1d
 
 def get_TKE(ds, z="zt"):
     if isinstance(z, str):
-        _, _, _, _, zt, _, _, _, _ = sam.get_grid(ds)
+        _, _, _, _, zt, _, _, _, _ = get_grid(ds)
 
     U2 = stagger_var("U2", ds, zt)
     V2 = stagger_var("V2", ds, zt)
@@ -14,7 +14,7 @@ def get_TKE(ds, z="zt"):
 
 def get_disp(ds, z="zt"):
     if isinstance(z, str):
-        _, _, _, _, zt, _, _, _, _ = sam.get_grid(ds)
+        _, _, _, _, zt, _, _, _, _ = get_grid(ds)
 
     U2DFSN = stagger_var("U2DFSN", ds, zt)
     V2DFSN = stagger_var("V2DFSN", ds, zt)
