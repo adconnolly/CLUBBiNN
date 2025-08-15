@@ -9,3 +9,11 @@ repos:
       #   args: [--fix] # TODO: Do we want this?
       # Run the formatter.
       - id: ruff-format
+  - repo: local
+    hooks:
+      - id: clean-notebooks
+        name: Clean Notebooks
+        description: Remove metadata from all Jupyter notebooks.
+        entry: ./scripts/clean_notebooks.sh
+        language: script
+        files: \.ipynb$
