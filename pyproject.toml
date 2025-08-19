@@ -21,13 +21,15 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "ruff",
-    "pre-commit~=4.2"
+    "pre-commit~=4.2",
+    "xarray",
+    "pytest",
+    "pytest-cov"
 ]
 notebooks = [
     "notebook",
     "ipython",
     "ipykernel",
-    "xarray",
     "matplotlib",
 ]
 
