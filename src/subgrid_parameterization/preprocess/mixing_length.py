@@ -407,6 +407,10 @@ def compute_mixing_length(
             * lmin
             * invrs_Lscale_sfclyr_depth
         )
+    else:
+        lminh = (
+            np.maximum(0.0, Lscale_sfclyr_depth - zt) * lmin * invrs_Lscale_sfclyr_depth
+        )
 
     Lscale_up = np.maximum(lminh, Lscale_up)
     Lscale_down = np.maximum(lminh, Lscale_down)
