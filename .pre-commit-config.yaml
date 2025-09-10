@@ -3,9 +3,5 @@ repos:
   # Ruff version.
     rev: v0.12.7
     hooks:
-      # Run the linter.
-      # TODO: Uncomment when we are ready to fix the linting
-      # - id: ruff-check
-      #   args: [--fix] # TODO: Do we want this?
       # Run the formatter.
       - id: ruff-format
