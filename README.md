@@ -37,13 +37,13 @@ on the files that are staged for commit. To install the pre-commit hooks,
 first install the package:
 
 ```bash
-pip install "pre-commit"
+pip install pre-commit
 ```
 
 Then, run the following command to install the hooks:
 
 ```bash
-"pre-commit" install
+pre-commit install
 ```
 
 Now the formatting and linting will be applied on each commit.
