@@ -51,9 +51,19 @@ jobs:
         python -m venv ${{env.venv_name}}
         . ${{env.venv_name}}/bin/activate
         pip install ruff
+        pip install nb-clean
 
     - name: ruff format
       run: |
         cd ${{ github.workspace }}
         . ${{env.venv_name}}/bin/activate
         ruff format --diff .
+
+    - name: notebook cleaning
+      run: |
+        cd ${{ github.workspace }}
+        . ${{env.venv_name}}/bin/activate
+        nb-clean check \
+        --remove-all-notebook-metadata \
+        --remove-empty-cells \
+        --preserve-cell-outputs ./
