@@ -47,3 +47,7 @@ pre-commit install
 ```
 
 Now the formatting and linting will be applied on each commit.
+Specifically we use:
+
+- [ruff](https://docs.astral.sh/ruff/) to apply standardized formatting to any Python code
+- [nb-clean](https://github.com/srstevenson/nb-clean) to clean notebooks whilst preserving the outputs
