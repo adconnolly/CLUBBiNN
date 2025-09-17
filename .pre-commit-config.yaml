@@ -1,7 +1,18 @@
 repos:
+  # Apply ruff formatter
   - repo: https://github.com/astral-sh/ruff-pre-commit
   # Ruff version.
     rev: v0.12.7
     hooks:
       # Run the formatter.
       - id: ruff-format
+
+  # Clean Jupyter notebooks but preserve outputs
+  - repo: https://github.com/srstevenson/nb-clean
+    rev: 4.0.1
+    hooks:
+      - id: nb-clean
+        args:
+          - --remove-all-notebook-metadata
+          - --remove-empty-cells
+          - --preserve-cell-outputs
