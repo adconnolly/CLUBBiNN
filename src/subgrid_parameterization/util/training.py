@@ -74,16 +74,16 @@ class SAMDataInterface:
 
         Parameters
         ----------
-        z_sam : npt.ArrayLike
+        z_sam : numpy.array_like
             Vertical grid from SAM LES results [meters]
             In principle can have a rank 1 or 2 (when grid varies with time).
             However only rank 1 is implemented at the moment.
 
         Returns
         -------
-        npt.ArrayLike
+        numpy.ndarray
             zm : CLUBB Momentum grid [meters]
-        npt.ArrayLike
+        numpy.ndarray
             zt : CLUBB Thermodynamic grid [meters]
         """
 
@@ -110,7 +110,7 @@ class SAMDataInterface:
 
         Parameters
         ----------
-        sam_dataset : xr.Dataset
+        sam_dataset : xarray.Dataset
             Dataset containing SAM-LES results.
         """
         self._sam_dataset = sam_dataset
