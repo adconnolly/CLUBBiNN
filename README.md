@@ -41,8 +41,23 @@ pip install -e .[all]
 ```
 
 
+## Notebooks
 
+The repository contains several notebooks used for analysis and training in
+respective directories.
 
+The analysis notebooks process the BOMEX and DYCOMS datasets for the C14 parameter
+and TKE (Total Kinetic Energy) to interrogate the datasets and aid in the design and
+training of ML schemes.
+C14 is the main parameter of interest in this work.
+It is a coefficient derived from mixing length and used in calculating momentum dissipation
+in CLUBB. Currently it is prescribed, but the hope is that by studying high-resolution
+LES simulations we can develop a better, data-driven model, thereby improving the performance
+of lower resolution models.
+
+The train notebooks aim to provide templates for a general workflow for the construction
+of ML subgrid parameterizations.
+Each one describes the training process for different models for C14 based on different datasets.
 
 
 # Pre-commit hooks
