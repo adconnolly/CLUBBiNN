@@ -53,3 +53,9 @@ def bomex_mixing_length():
         )
 
     return xr.open_dataset(path)
+
+
+@pytest.fixture(scope="session")
+def test_files_dir():
+    """Provides the path to the local test files directory."""
+    return Path(__file__).parent / "test_files"
