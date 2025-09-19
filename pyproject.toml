@@ -41,6 +41,8 @@ dev = [
     "ruff~=0.13.0",
     "nb-clean",
     "pre-commit~=4.2",
+    "pytest",
+    "pytest-cov",
 ]
 all = ["subgrid_parameterization[notebooks,dev]"]
 
