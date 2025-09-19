@@ -10,19 +10,40 @@ The source code for the latest release can be found at [github/larson-group/club
 This repository contains a Python package (`subgrid_parameterization`) of code used in developing
 the CLUBBED extension to CLUBB.
 It also contains a number of notebooks used in data analysis and training of the schemes.
+
+## subgrid_parameterization
+
+`subgrid_parameterization` is a Python package containing functions and utilities that are
+repeatedly used in the development of CLUBBED and the associated notebooks.
+Its source code is contained inside the `src/subgrid_parameterization/` directory.
+
+It can be installed as a Python package using pip by cloning this repository, navigating to it,
+and running:
+```bash
+pip install .
 ```
+It is strongly recommended that this is done from within a [virtual environment](https://docs.python.org/3/library/venv.html).
+
+### Development and optional dependencies
+
+To run the notebooks install `jupyterlab` and other associated dependencies using:
+```bash
+pip install .[notebooks]
 ```
 
-# subgrid_parameterization
-Template for a general workflow for the construction of ML subgrid parameterizations.
+For development, create an editable install and include the developer dependencies using:
+```bash
+pip install -e .[dev]
+```
+or, if you also want the notebook functionalities:
+```bash
+pip install -e .[all]
+```
 
-Install using:
 
-`pip install .`
 
-For development (preferred option for now), create an editable install using:
 
-`pip install -e .` 
+
 
 # Pre-commit hooks
 The project uses [`pre-commit`](https://pre-commit.com/) to allow easy
