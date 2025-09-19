@@ -1,22 +1,16 @@
-# CLUBBED
-Cloud Layers Unified By Binormals and Equation Discovery (CLUBBED) is an equation discovery (ED) extension of Cloud Layers Unified By Binormals (CLUBB).
+# CLUBBED: subgrid parameterization
 
-CLUBB (github.com/larson-group/clubb_release) is principally developed by the research group of Vince Larson and subject to the following copyright.
+CLUBBED (Cloud Layers Unified By Binormals and Equation Discovery) is an equation discovery (ED) extension of Cloud Layers Unified By Binormals (CLUBB).
 
+CLUBB is a boundary-layer cloud parameterization scheme
+principally developed by the research group of Vince Larson and subject to the copyright detailed in
+[LICENSE_CLUBB](https://github.com/adconnolly/CLUBBED/blob/main/LICENSE_CLUBB).
+The source code for the latest release can be found at [github/larson-group/clubb_release](https://github.com/larson-group/clubb_release).
+
+This repository contains a Python package (`subgrid_parameterization`) of code used in developing
+the CLUBBED extension to CLUBB.
+It also contains a number of notebooks used in data analysis and training of the schemes.
 ```
-********************************************************************************
-*                           Copyright Notice
-*                       This code is (C) 2006-2024
-*                 Vincent E. Larson and Brian M. Griffin
-*
-*         The distribution of this code and derived works thereof 
-*                      should include this notice.
-*
-*         Portions of this code derived from other sources (Hugh Morrison,
-*         ACM TOMS, Numerical Recipes, et cetera) are the intellectual
-*         property of their respective authors as noted and are also 
-*         subject to copyright. 
-********************************************************************************
 ```
 
 # subgrid_parameterization
