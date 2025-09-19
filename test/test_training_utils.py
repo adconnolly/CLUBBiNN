@@ -116,3 +116,63 @@ def test_SAMDataInterface_init_errors(bomex_dataset):
 
         with pytest.raises(ValueError):
             train.SAMDataInterface(combined)
+
+
+@np.vectorize
+def _ramp_function(x):
+    """Simple piecewise-linear function with several slopes."""
+    if x < 0:
+        return 0.0
+    elif x < 1.0:
+        return x
+    return 1.0 + (x - 1.0) * 0.5
+
+
+def test_SAMDataInterface_interpolation():
+    # NOTE: Must contain knots of the _ramp_function
+    x_coarse = np.array([-1.0, 0.0, 1.0, 2.0])
+    y_coarse = _ramp_function(x_coarse)
+
+    x_fine = np.linspace(-1.0, 3.0, 40)
+    y_fine = train.SAMDataInterface.interpolate_with_extrapolation(
+        x_fine, x_coarse, y_coarse
+    )
+    y_ref = _ramp_function(x_fine)
+
+    # We follow GTest conventions for 'narrow' FP tolerance
+    np.testing.assert_array_max_ulp(y_ref, y_fine, maxulp=4)
+
+
+def test_SAMDataInterface_variable_access(bomex_dataset):
+    sam_data = train.SAMDataInterface(bomex_dataset)
+
+    # We don't test the accuracy of the interpolation
+    # only errors and some generic properties of the shape of outputs
+
+    # Valid use cases
+    res = sam_data.get_sam_variable_on_clubb_grid("U", grid_type="zm")
+    assert res.shape == (len(bomex_dataset["time"]), len(sam_data.zm))
+
+    res = sam_data.get_sam_variable_on_clubb_grid("THLM", grid_type="zt")
+    assert res.shape == (len(bomex_dataset["time"]), len(sam_data.zt))
+
+    pressure = sam_data.get_sam_pressure_on_clubb_grid(grid_type="zm")
+    assert pressure.shape == (len(sam_data.zm),)
+
+    pressure = sam_data.get_sam_pressure_on_clubb_grid(grid_type="zm")
+    assert pressure.shape == (len(sam_data.zm),)
+
+    # Invalid use cases
+    # Invalid grid type
+    with pytest.raises(ValueError):
+        sam_data.get_sam_variable_on_clubb_grid("U", grid_type="invalid_grid")
+    with pytest.raises(ValueError):
+        sam_data.get_sam_pressure_on_clubb_grid(grid_type="invalid_grid")
+
+    # Invalid variable name
+    with pytest.raises(ValueError):
+        sam_data.get_sam_variable_on_clubb_grid("I am not in dataset", grid_type="zm")
+
+    # Invalid variable dimensions
+    with pytest.raises(ValueError):
+        sam_data.get_sam_variable_on_clubb_grid("p", grid_type="zm")

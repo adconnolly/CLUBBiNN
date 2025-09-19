@@ -5,9 +5,15 @@ import xarray as xr
 import warnings
 from pathlib import Path
 
+import subgrid_parameterization.preprocess.SAM_helpers as sam
+import subgrid_parameterization.preprocess.mixing_length as mixing_length
+
+from subgrid_parameterization.preprocess.C14 import get_C14
 
 import numpy.typing as npt
 import numpy as np
+
+from scipy.interpolate import interp1d
 
 
 def read_as_xarray(path: Path | str) -> xr.Dataset:
@@ -148,3 +154,105 @@ class SAMDataInterface:
     def zt(self) -> npt.NDArray:
         """CLUBB Thermodynamic grid [meters]"""
         return self._zt
+
+    @staticmethod
+    def interpolate_with_extrapolation(
+        x_new: npt.NDArray, x: npt.NDArray, y: npt.NDArray
+    ) -> npt.NDArray:
+        """Piece-wise linear interpolate y(x) to new grid with extrapolation.
+
+        Parameters
+        ----------
+        x_new : numpy.ndarray
+            New grid
+        x : numpy.ndarray
+            Original grid that must be 1D array
+        y : numpy.ndarray
+            Original y values.
+
+        Returns
+        -------
+        numpy.ndarray
+            Interpolated (or extrapolated) y values at x_new.
+        """
+
+        # Make error in case of ND x array more explicit
+        if len(x.shape) != 1:
+            raise ValueError(f"Original x grid must be 1D array. Has shape: {x.shape}")
+
+        # TODO: interp1d is 'Legacy' (but not deprecated). Perhaps this should be replaced.
+        interpolator = interp1d(
+            x,
+            y,
+            axis=-1,
+            fill_value="extrapolate",
+        )
+        return interpolator(x_new)
+
+    def get_sam_variable_on_clubb_grid(
+        self, varname: str, grid_type: str
+    ) -> npt.NDArray:
+        """Get a SAM result variable interpolated on the CLUBB grid.
+
+        Parameters
+        ----------
+        varname : str
+            Name of the variable in the SAM dataset.
+        grid : str
+            Target grid for interpolation. Must be either 'zm' or 'zt'.
+
+        Returns
+        -------
+        numpy.ndarray
+            Interpolated variable on the target grid.
+        """
+        if grid_type not in ("zm", "zt"):
+            raise ValueError(
+                "SAM variable must be interpolated on either CLUBB momentum ('zm') or thermodynamic ('zt') grid."
+            )
+
+        if varname not in self._sam_dataset:
+            raise ValueError(f"Variable '{varname}' not found in the dataset.")
+
+        if {"time", "z"} != set(self._sam_dataset[varname].dims):
+            raise ValueError(
+                f"Variable '{varname}' must have dimensions ('time', 'z'). Has {self._sam_dataset[varname].dims}."
+                "If you are trying to access pressure, use the dedicated method."
+            )
+
+        z = self._zm if grid_type == "zm" else self._zt
+
+        return self.interpolate_with_extrapolation(
+            z,
+            self._sam_dataset["z"].values,
+            self._sam_dataset[varname],
+        )
+
+    def get_sam_pressure_on_clubb_grid(self, grid_type: str) -> npt.NDArray:
+        """Get the SAM pressure variable interpolated on the CLUBB grid.
+
+        Parameters
+        ----------
+        grid : str
+            Target grid for interpolation. Must be either 'zm' or 'zt'.
+
+        Returns
+        -------
+        numpy.ndarray
+            Interpolated pressure on the target grid.
+        """
+        if grid_type not in ("zm", "zt"):
+            raise ValueError(
+                "SAM pressure must be interpolated on either CLUBB momentum ('zm') or thermodynamic ('zt') grid."
+            )
+
+        if "p" not in self._sam_dataset:
+            raise ValueError("Pressure variable 'p' not found in the dataset.")
+
+        z = self._zm if grid_type == "zm" else self._zt
+
+        return self.interpolate_with_extrapolation(
+            z,
+            self._sam_dataset["z"].values,
+            self._sam_dataset["p"].values,
+        )
