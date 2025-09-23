@@ -114,7 +114,7 @@ class SAMDataInterface:
         sam_dataset : xarray.Dataset
             Dataset containing SAM-LES results.
         """
-        self._sam_dataset = sam_dataset
+        self._sam_dataset = sam_dataset.copy(deep=True)
 
         # Verify that only expected coordinates are present in the dataset
         if {"time", "z", "y", "x"} != set(self._sam_dataset.coords):
