@@ -2,6 +2,7 @@
 
 import xarray as xr
 import warnings
+import typing
 from pathlib import Path
 
 import numpy.typing as npt
@@ -63,13 +64,13 @@ class SAMDataInterface:
 
     _sam_dataset: xr.Dataset
 
-    _zm: npt.NDArray
-    _zt: npt.NDArray
+    _zm: npt.NDArray[np.float64]
+    _zt: npt.NDArray[np.float64]
 
     @staticmethod
     def convert_sam_grid_to_clubb(
         z_sam: npt.ArrayLike,
-    ) -> tuple[npt.NDArray, npt.NDArray]:
+    ) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
         """Construct CLUBB grids from the SAM LES grid:
 
         Parameters
@@ -81,14 +82,14 @@ class SAMDataInterface:
 
         Returns
         -------
-        numpy.ndarray
+        numpy.ndarray[np.float64]
             zm : CLUBB Momentum grid [meters]
-        numpy.ndarray
+        numpy.ndarray[np.float64]
             zt : CLUBB Thermodynamic grid [meters]
         """
 
         # Ensure that we will return the correct type
-        z_sam = np.asarray(z_sam)
+        z_sam = np.asarray(z_sam, dtype=np.float64)
 
         if len(z_sam.shape) != 1:
             # OK, indexing with Ellipsis below should take care of rank 2 (and higher) case
@@ -140,35 +141,47 @@ class SAMDataInterface:
         self._zt.setflags(write=False)
 
     @property
-    def zm(self) -> npt.NDArray:
+    def zm(self) -> npt.NDArray[np.float64]:
         """CLUBB Momentum grid [meters]"""
         return self._zm
 
     @property
-    def zt(self) -> npt.NDArray:
+    def zt(self) -> npt.NDArray[np.float64]:
         """CLUBB Thermodynamic grid [meters]"""
         return self._zt
 
+    T = typing.TypeVar("T", bound=np.floating)
+
     @staticmethod
     def interpolate_with_extrapolation(
-        x_new: npt.NDArray, x: npt.NDArray, y: npt.NDArray
-    ) -> npt.NDArray:
+        x_new: npt.NDArray[T], x: npt.NDArray[T], y: npt.NDArray[T]
+    ) -> npt.NDArray[T]:
         """Piece-wise linear interpolate y(x) to new grid with extrapolation.
 
         Parameters
         ----------
-        x_new : numpy.ndarray
+        x_new : numpy.ndarray[T]
             New grid
-        x : numpy.ndarray
+        x : numpy.ndarray[T]
             Original grid that must be 1D array
-        y : numpy.ndarray
+        y : numpy.ndarray[T]
             Original y values.
+
+        Where T is some floating point dtype.
 
         Returns
         -------
-        numpy.ndarray
+        numpy.ndarray[T]
             Interpolated (or extrapolated) y values at x_new.
         """
+
+        # Do not allow silent mixed precision computation
+        # Check that dtype of all inputs matches
+        if x_new.dtype != x.dtype or x.dtype != y.dtype:
+            raise ValueError(
+                "Mixed precision is not supported. Cast all inputs to same dtype before call. Was given: "
+                f"x_new.dtype={x_new.dtype}, x.dtype={x.dtype}, y.dtype={y.dtype}"
+            )
 
         # Make error in case of ND x array more explicit
         if len(x.shape) != 1:
@@ -185,7 +198,7 @@ class SAMDataInterface:
 
     def get_sam_variable_on_clubb_grid(
         self, varname: str, grid_type: str
-    ) -> npt.NDArray:
+    ) -> npt.NDArray[np.float64]:
         """Get a SAM result variable interpolated on the CLUBB grid.
 
         Parameters
@@ -218,11 +231,11 @@ class SAMDataInterface:
 
         return self.interpolate_with_extrapolation(
             z,
-            self._sam_dataset["z"].values,
-            self._sam_dataset[varname],
+            np.asarray(self._sam_dataset["z"].values, dtype=np.float64),
+            np.asarray(self._sam_dataset[varname].values, dtype=np.float64),
         )
 
-    def get_sam_pressure_on_clubb_grid(self, grid_type: str) -> npt.NDArray:
+    def get_sam_pressure_on_clubb_grid(self, grid_type: str) -> npt.NDArray[np.float64]:
         """Get the SAM pressure variable interpolated on the CLUBB grid.
 
         Parameters
@@ -232,7 +245,7 @@ class SAMDataInterface:
 
         Returns
         -------
-        numpy.ndarray
+        numpy.ndarray[np.float64]
             Interpolated pressure on the target grid.
         """
         if grid_type not in ("zm", "zt"):
@@ -247,6 +260,6 @@ class SAMDataInterface:
 
         return self.interpolate_with_extrapolation(
             z,
-            self._sam_dataset["z"].values,
-            self._sam_dataset["p"].values,
+            np.asarray(self._sam_dataset["z"].values, dtype=np.float64),
+            np.asarray(self._sam_dataset["p"].values, dtype=np.float64),
         )

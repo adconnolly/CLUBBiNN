@@ -143,6 +143,23 @@ def test_SAMDataInterface_interpolation():
     np.testing.assert_array_max_ulp(y_ref, y_fine, maxulp=4)
 
 
+def test_SAMDataInterface_interpolation_errors():
+    # Rejected mixed precision call
+    input = (
+        np.array([-1.0, 0.0, 1.0, 2.0], dtype=np.float64),
+        np.array([-1.0, 0.0, 1.0, 2.0], dtype=np.float64),
+        np.array([-1.0, 0.0, 1.0, 2.0], dtype=np.float64),
+    )
+    for i in range(len(input)):
+        # Apply conversion to 32-bit float to each argument in turn
+        new_inputs = [
+            np.asarray(x, dtype=np.float32) if i == j else x
+            for j, x in enumerate(input)
+        ]
+        with pytest.raises(ValueError):
+            train.SAMDataInterface.interpolate_with_extrapolation(*new_inputs)
+
+
 def test_SAMDataInterface_variable_access(bomex_dataset):
     sam_data = train.SAMDataInterface(bomex_dataset)
 
