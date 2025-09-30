@@ -1,3 +1,9 @@
+"""Mixing length-scales calculation based on CLUBB.
+
+Provides interface for computing mixing length using the 5th moist, nonlocal length scale method
+which is used by CLUBB.
+"""
+
 import numpy as np
 from subgrid_parameterization.preprocess import SAM_helpers as sam
 
