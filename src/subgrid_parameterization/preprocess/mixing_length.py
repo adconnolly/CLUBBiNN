@@ -2,10 +2,30 @@
 
 Provides interface for computing mixing length using the 5th moist, nonlocal length scale method
 which is used by CLUBB.
+
+Attributes
+----------
+    CLUBB_STANDALONE_CONSTANTS : dict[str, float]
+        Dictionary that contains values of constants used in mixing length computation.
+        They were logged during the standalone run of CLUBB. Note that, when embedded in
+        a host model, the constants may be different. Keys match the names used internally
+        in CLUBB.
 """
 
 import numpy as np
 from subgrid_parameterization.preprocess import SAM_helpers as sam
+
+
+CLUBB_STANDALONE_CONSTANTS: dict[str, float] = {
+    "Cp": 0.10046700000000000e04,
+    "Rd": 0.28704000000000002e03,
+    "ep": 0.62197183098591557e00,
+    "ep1": 0.60778985507246353e00,
+    "ep2": 0.16077898550724636e01,
+    "Lv": 0.25000000000000000e07,
+    "grav": 0.98100000000000005e01,
+    "eps": 0.10000000000000000e-09,
+}
 
 
 def get_mixing_length(ds):
@@ -98,15 +118,14 @@ def compute_mixing_length(
     # Constants
     zlmin = 0.1
     Lscale_sfclyr_depth = 500.0
-    grav = 9.81  # gravitational acceleration
-    cp = 1004.0  # Specific heat capacity of air at constant pressure
-    Rd = 287.0  # Gas constant for dry air
-    Rv = 461.0  # Gas constant for water vapor
-    Lv = 2.5e6  # Latent heat of vaporization
-    eps = 1e-6  # Small threshold value
-    ep = Rd / Rv
-    ep1 = (1 - ep) / ep
-    ep2 = 1 / ep
+    grav = CLUBB_STANDALONE_CONSTANTS["grav"]
+    cp = CLUBB_STANDALONE_CONSTANTS["Cp"]
+    Rd = CLUBB_STANDALONE_CONSTANTS["Rd"]
+    Lv = CLUBB_STANDALONE_CONSTANTS["Lv"]
+    eps = CLUBB_STANDALONE_CONSTANTS["eps"]
+    ep = CLUBB_STANDALONE_CONSTANTS["ep"]
+    ep1 = CLUBB_STANDALONE_CONSTANTS["ep1"]
+    ep2 = CLUBB_STANDALONE_CONSTANTS["ep2"]
 
     # Compute turbulent kinetic energy (TKE)
     tke_i = (em[:, :-1] + em[:, 1:]) / 2
@@ -429,5 +448,7 @@ def sat_mixrat_liq(T, p):
     Using the Clausius-Clapeyron equation approximation.
     """
     es = 6.112 * np.exp((17.67 * (T - 273.15)) / (T - 29.65)) * 100  # Convert hPa to Pa
-    epsilon = 0.622  # Ratio of molecular weights (water vapor/dry air)
+    epsilon = CLUBB_STANDALONE_CONSTANTS[
+        "ep"
+    ]  # Ratio of molecular weights (water vapor/dry air)
     return epsilon * es / (p - es)
