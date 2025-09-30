@@ -47,9 +47,20 @@ pip install -e .[all]
 The repository contains several notebooks used for analysis and training in
 respective directories.
 
-The analysis notebooks use processed Large-Eddy Simulation (LES) data, e.g. of the BOMEX and DYCOMS cases including turbulence statistics such as Turbulent Kinetic Energy (TKE) as well as the dissipation of TKE, to aid in the design and training of ML schemes.
+The analysis notebooks use processed Large-Eddy Simulation (LES) data, e.g. of the BOMEX
+and DYCOMS cases including turbulence statistics such as Turbulent Kinetic Energy (TKE)
+as well as the dissipation of TKE, to aid in the design and training of ML schemes.
 
-A coefficient, C14, related to the dissipation of TKE, through the dissipation of horizontal velocity variances, is the initial parameter of interest. Currently, this coefficient is set to a constant value, but high resolution simulations reveal vertical structure and regime dependence. We hope to utilize the same high resolution data to develop a data-driven model of the coefficient. To provide labels for the supervised machine learning of this coefficient, mixing lengths are calculated through python routines which mirror Fortran algorithms used in CLUBB. Other variables are similarly regridded onto a coarse staggered grid, as that used in CLUBB, so that machine learning models ingest only coarse-scale variables. Data-driven models can therefore be implemented in the coarser models with the hopes of improving weather and climate predictions.
+A coefficient, C14, related to the dissipation of TKE, through the dissipation of
+horizontal velocity variances, is the initial parameter of interest. Currently, this
+coefficient is set to a constant value, but high resolution simulations reveal vertical
+structure and regime dependence. We hope to utilize the same high resolution data to
+develop a data-driven model of the coefficient. To provide labels for the supervised
+machine learning of this coefficient, mixing lengths are calculated through python
+routines which mirror Fortran algorithms used in CLUBB. Other variables are similarly
+regridded onto a coarse staggered grid, as that used in CLUBB, so that machine learning
+models ingest only coarse-scale variables. Data-driven models can therefore be implemented
+in the coarser models with the hopes of improving weather and climate predictions.
 
 The train notebooks aim to provide templates for a general workflow for the construction
 of data-driven subgrid parameterizations.
@@ -102,11 +113,12 @@ Now the formatting and linting will be applied on each commit.
 
 ## Authors and Licensing
 
-The CLUBBED project is led by [Alex Connolly](https://adconnolly.github.io/) of the [Gentine Lab](https://gentinelab.eee.columbia.edu/home)
-at Columbia University.
+The CLUBBED project is led by [Alex Connolly](https://adconnolly.github.io/) of the
+[Gentine Lab](https://gentinelab.eee.columbia.edu/home) at Columbia University.
 
-Research Software Engineering support to the project has been provided by Jack Atkinson
-and Mikolaj Kowalski of the [Institute of Computing for Climate Science (ICCS)](https://iccs.cam.ac.uk/).
+Research Software Engineering support to the project has been provided by
+[Jack Atkinson](https://jackatkinson.net/) and Mikolaj Kowalski of the
+[Institute of Computing for Climate Science (ICCS)](https://iccs.cam.ac.uk/).
 
 The project is associated with improving the CLUBB code, the license for which can be found in 
 [`LICENSE_CLUBB`](https://github.com/adconnolly/CLUBBED/blob/main/LICENSE_CLUBB).
