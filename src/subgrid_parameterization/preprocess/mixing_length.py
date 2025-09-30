@@ -450,7 +450,7 @@ def compute_mixing_length(
 
     Lscale = np.sqrt(Lscale_up * Lscale_down)
 
-    # Lscale[:, -1] = Lscale[:, -2]
+    Lscale[:, -1] = Lscale[:, -2]
     Lscale = np.minimum(Lscale, Lscale_max)
     return Lscale, Lscale_up, Lscale_down
 
