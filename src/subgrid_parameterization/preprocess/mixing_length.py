@@ -346,7 +346,7 @@ def compute_mixing_length(
 
     for i in range(ngrdcol):
         Lscale_down_min_alt = zt[i, -1]
-        for k in range(nzt - 1, 1, -1):
+        for k in range(nzt - 1, 0, -1):
             if tke_i[i, k] - CAPE_incr_1[i, k - 1] > 0.0:
                 tke = tke_i[i, k] - CAPE_incr_1[i, k - 1]
                 j = k - 2
