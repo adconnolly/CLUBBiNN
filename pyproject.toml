@@ -1,0 +1,52 @@
+[build-system]
+requires = ["hatchling >= 1.14"]
+build-backend = "hatchling.build"
+
+[project]
+name = "subgrid_parameterization"
+version = "0.0.1"
+description = "ML optimisation framework for subgrid forcing"
+authors = [
+    {name = "Alexander Connolly"}
+]
+readme = "README.md"
+license-files = ["LICENSE"]
+requires-python = ">=3.10"
+classifiers = [
+    "Natural Language :: English",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3 :: Only",
+    'Programming Language :: Python :: 3.10',
+    'Programming Language :: Python :: 3.11',
+    'Programming Language :: Python :: 3.12',
+    'Programming Language :: Python :: 3.13',
+    "Operating System :: OS Independent",
+]
+
+
+dependencies = [
+    "torch",
+    "numpy >= 2.0",
+    "xarray",
+    "scipy",
+    "scikit-learn",
+]
+
+[project.optional-dependencies]
+notebooks = [
+    "jupyterlab",
+    "matplotlib",
+]
+dev = [
+    "ruff~=0.13.0",
+    "nb-clean",
+    "pre-commit~=4.2",
+    "pytest",
+    "pytest-cov",
+]
+all = ["subgrid_parameterization[notebooks,dev]"]
+
+
+[tool.ruff]
+# Run ruff on notebooks
+extend-include = ["*.ipynb"]
