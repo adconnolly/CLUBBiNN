@@ -153,6 +153,82 @@ class SAMDataInterface:
     T = typing.TypeVar("T", bound=np.floating)
 
     @staticmethod
+    def create_interpolation_matrix(
+        to_grid: npt.NDArray[T], from_grid: npt.NDArray[T]
+    ) -> npt.NDArray[T]:
+        """Create piece-wise constant interpolation matrix between two 1d grids.
+
+        Parameters
+        ----------
+        to_grid : 1D numpy.ndarray
+            Boundaries between the cells of the target grid.
+        from_grid : 1D numpy.ndarray
+            Boundaries between the cells of the source grid.
+
+        Returns
+        -------
+        2D (N-1)x(M-1) numpy.ndarray
+        where `len(to_grid)` is N and `len(from_grid)` M
+        Interpolation matrix TODO: Finish this
+
+        Note
+        ----
+        Data storage on both grids is assumed as average values of the variable
+        at cell centres. Hence, since inputs are cell boundaries. The number of
+        values stored on from_grid on len(from_grid) == N is N-1.
+
+        When calculating averaged values on the target grid, we also assume that
+        these are average values at cell centres.
+        """
+
+        # Assert preconditions
+        if to_grid[0] < from_grid[0] or to_grid[-1] > from_grid[-1]:
+            raise ValueError(
+                "to_grid must be fully contained in from_grid. "
+                f"Got to_grid[0]={to_grid[0]}, from_grid[0]={from_grid[0]}, "
+                f"to_grid[-1]={to_grid[-1]}, from_grid[-1]={from_grid[-1]}"
+            )
+        if len(to_grid.shape) != 1 or len(from_grid.shape) != 1:
+            raise ValueError(
+                "Both to_grid and from_grid must be 1D arrays. "
+                f"Got to_grid.shape={to_grid.shape}, from_grid.shape={from_grid.shape}"
+            )
+        if len(to_grid) < 2 or len(from_grid) < 2:
+            raise ValueError(
+                "Both to_grid and from_grid must have at least two elements (one cell). "
+                f"Got len(to_grid)={len(to_grid)}, len(from_grid)={len(from_grid)}"
+            )
+
+        # Note that the comparison here is not arbitrary
+        # We want to make sure that the grid in not judged sorted if it contains NaN
+        # (which is correct, since NaNs are not ordered)
+        if not np.all(to_grid[1:] >= to_grid[:-1]):
+            raise ValueError("'to_grid' must be sorted in ascending order.")
+        if not np.all(from_grid[1:] >= from_grid[:-1]):
+            raise ValueError("'from_grid' must be sorted in ascending order.")
+
+        # Build the matrix element by element
+        #
+        # This is the easiest conceptually way to code it!
+        #
+        # TODO: REFACTOR THIS INEFFICIENT MONSTROSITY
+        matrix = np.zeros([len(to_grid) - 1, len(from_grid) - 1])
+        for i_col in range(len(to_grid) - 1):
+            for i_row in range(len(from_grid) - 1):
+                x_b, x_t = from_grid[i_row : i_row + 2]
+                y_b, y_t = to_grid[i_col : i_col + 2]
+
+                if y_b == y_t:
+                    # Degenerate cell in target grid
+                    matrix[i_col, i_row] = 0.0
+                    continue
+
+                matrix[i_col, i_row] = max(0.0, min(x_t, y_t) - max(x_b, y_b)) / (
+                    y_t - y_b
+                )
+        return matrix
+
+    @staticmethod
     def interpolate_with_extrapolation(
         x_new: npt.NDArray[T], x: npt.NDArray[T], y: npt.NDArray[T]
     ) -> npt.NDArray[T]:
