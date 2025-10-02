@@ -207,25 +207,27 @@ class SAMDataInterface:
         if not np.all(from_grid[1:] >= from_grid[:-1]):
             raise ValueError("'from_grid' must be sorted in ascending order.")
 
-        # Build the matrix element by element
-        #
-        # This is the easiest conceptually way to code it!
+        # Build the matrix row by row
         #
         # TODO: REFACTOR THIS INEFFICIENT MONSTROSITY
         matrix = np.zeros([len(to_grid) - 1, len(from_grid) - 1])
         for i_col in range(len(to_grid) - 1):
-            for i_row in range(len(from_grid) - 1):
-                x_b, x_t = from_grid[i_row : i_row + 2]
-                y_b, y_t = to_grid[i_col : i_col + 2]
+            # Find index of upper and lowe bounds for non-zero elements of the matrix
+            y_b, y_t = to_grid[i_col : i_col + 2]
 
-                if y_b == y_t:
-                    # Degenerate cell in target grid
-                    matrix[i_col, i_row] = 0.0
-                    continue
+            if y_b == y_t:
+                # If the target cell is degenerate we can just go to the next row
+                continue
 
-                matrix[i_col, i_row] = max(0.0, min(x_t, y_t) - max(x_b, y_b)) / (
-                    y_t - y_b
-                )
+            i_lb = np.searchsorted(from_grid, y_b, side="right") - 1
+            i_ub = np.searchsorted(from_grid, y_t, side="left")
+
+            x_b = from_grid[i_lb:i_ub]
+            x_t = from_grid[i_lb + 1 : i_ub + 1]
+
+            matrix[i_col, i_lb:i_ub] = np.maximum(
+                0.0, np.minimum(x_t, y_t) - np.maximum(x_b, y_b)
+            ) / (y_t - y_b)
         return matrix
 
     @staticmethod
