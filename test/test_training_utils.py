@@ -243,7 +243,8 @@ class TestSAMDataInterface_interpolation_matrix:
         matrix = train.SAMDataInterface.create_interpolation_matrix(
             to_edges, from_edges
         )
-        np.testing.assert_array_max_ulp(ref_values, matrix, maxulp=4)
+        # Numpy test assertions do not work with sparse arrays
+        np.testing.assert_array_max_ulp(ref_values, matrix.todense(), maxulp=4)
 
     def test_interpolation_matrix_to_degenerate_interval(self):
         from_edges = np.array([0.0, 1.0, 2.0, 3.0])
@@ -254,7 +255,8 @@ class TestSAMDataInterface_interpolation_matrix:
         matrix = train.SAMDataInterface.create_interpolation_matrix(
             to_edges, from_edges
         )
-        np.testing.assert_array_max_ulp(ref_values, matrix, maxulp=4)
+        # Numpy test assertions do not work with sparse arrays
+        np.testing.assert_array_max_ulp(ref_values, matrix.todense(), maxulp=4)
 
     def test_interpolation_matrix_staggered_grids(self):
         from_edges = np.array([0.0, 1.0, 2.0, 3.0])
@@ -270,7 +272,8 @@ class TestSAMDataInterface_interpolation_matrix:
         matrix = train.SAMDataInterface.create_interpolation_matrix(
             to_edges, from_edges
         )
-        np.testing.assert_array_max_ulp(ref_values, matrix, maxulp=4)
+        # Numpy test assertions do not work with sparse arrays
+        np.testing.assert_array_max_ulp(ref_values, matrix.todense(), maxulp=4)
 
     def test_interpolation_matrix_errors(self):
         from_grid = np.array([0.0, 1.0, 2.0, 3.0])

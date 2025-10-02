@@ -9,6 +9,7 @@ import numpy.typing as npt
 import numpy as np
 
 from scipy.interpolate import interp1d
+import scipy.sparse
 
 
 def read_as_xarray(path: Path | str) -> xr.Dataset:
@@ -155,7 +156,7 @@ class SAMDataInterface:
     @staticmethod
     def create_interpolation_matrix(
         to_grid: npt.NDArray[T], from_grid: npt.NDArray[T]
-    ) -> npt.NDArray[T]:
+    ) -> scipy.sparse.csr_array:
         """Create piece-wise constant interpolation matrix between two 1d grids.
 
         Parameters
@@ -167,7 +168,7 @@ class SAMDataInterface:
 
         Returns
         -------
-        2D (N-1)x(M-1) numpy.ndarray
+        2D (N-1)x(M-1) scipy.sparse.csr_array
         where `len(to_grid)` is N and `len(from_grid)` M
         Interpolation matrix TODO: Finish this
 
@@ -207,10 +208,13 @@ class SAMDataInterface:
         if not np.all(from_grid[1:] >= from_grid[:-1]):
             raise ValueError("'from_grid' must be sorted in ascending order.")
 
-        # Build the matrix row by row
-        #
-        # TODO: REFACTOR THIS INEFFICIENT MONSTROSITY
-        matrix = np.zeros([len(to_grid) - 1, len(from_grid) - 1])
+        # Build the sparse matrix row by row
+        # We use LIL for building since it is more efficient to modify
+        # When the array is build, we switch to CSR to have faster matrix-vector product
+        # operations
+        matrix = scipy.sparse.lil_array(
+            (len(to_grid) - 1, len(from_grid) - 1), dtype=to_grid.dtype
+        )
         for i_col in range(len(to_grid) - 1):
             # Find index of upper and lowe bounds for non-zero elements of the matrix
             y_b, y_t = to_grid[i_col : i_col + 2]
@@ -228,7 +232,7 @@ class SAMDataInterface:
             matrix[i_col, i_lb:i_ub] = np.maximum(
                 0.0, np.minimum(x_t, y_t) - np.maximum(x_b, y_b)
             ) / (y_t - y_b)
-        return matrix
+        return scipy.sparse.csr_array(matrix)
 
     @staticmethod
     def interpolate_with_extrapolation(
