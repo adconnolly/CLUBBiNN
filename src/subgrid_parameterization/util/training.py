@@ -159,6 +159,13 @@ class SAMDataInterface:
     ) -> scipy.sparse.csr_array:
         """Create piece-wise constant interpolation matrix between two 1d grids.
 
+        Data storage on both grids is assumed as average values of the variable
+        at cell centres. Hence, since inputs are cell boundaries. The number of
+        values stored on from_grid on len(from_grid) == N is N-1.
+
+        When calculating averaged values on the target grid, we also assume that
+        these are average values at cell centres.
+
         Parameters
         ----------
         to_grid : 1D numpy.ndarray
@@ -169,17 +176,8 @@ class SAMDataInterface:
         Returns
         -------
         2D (N-1)x(M-1) scipy.sparse.csr_array
-        where `len(to_grid)` is N and `len(from_grid)` M
-        Interpolation matrix TODO: Finish this
-
-        Note
-        ----
-        Data storage on both grids is assumed as average values of the variable
-        at cell centres. Hence, since inputs are cell boundaries. The number of
-        values stored on from_grid on len(from_grid) == N is N-1.
-
-        When calculating averaged values on the target grid, we also assume that
-        these are average values at cell centres.
+            Where `len(to_grid)` is N and `len(from_grid)` M
+            Interpolation matrix that maps values from the source grid to the target grid.
         """
 
         # Assert preconditions
@@ -229,6 +227,9 @@ class SAMDataInterface:
             x_b = from_grid[i_lb:i_ub]
             x_t = from_grid[i_lb + 1 : i_ub + 1]
 
+            # Weight of a contribution of a `from` grid bin in a `target` bin
+            # is just a length of the intersection between the bins.
+            # We need to clip the length at 0.0 in case intersection is empty
             matrix[i_col, i_lb:i_ub] = np.maximum(
                 0.0, np.minimum(x_t, y_t) - np.maximum(x_b, y_b)
             ) / (y_t - y_b)
