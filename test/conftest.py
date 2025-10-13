@@ -1,3 +1,11 @@
+"""Pytest test configuration file.
+
+Pytest fixtures that may need to be shared across multiple test files should
+be defined here. See:
+
+https://docs.pytest.org/en/stable/reference/fixtures.html#conftest-py-sharing-fixtures-across-multiple-files)
+"""
+
 import pytest
 import os
 import xarray as xr
