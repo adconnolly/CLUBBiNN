@@ -1,7 +1,5 @@
 """Simple smoke tests on the datasets under data/."""
 
-import pytest
-
 
 class TestBOMEX:
     """
