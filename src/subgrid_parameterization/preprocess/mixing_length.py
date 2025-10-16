@@ -1,5 +1,37 @@
+"""Mixing length-scales calculation based on CLUBB.
+
+Provides interface for computing mixing length using the 5th moist, nonlocal length scale method
+which is used by CLUBB.
+
+Attributes
+----------
+    CLUBB_STANDALONE_CONSTANTS : dict[str, float]
+        Dictionary that contains values of constants used in mixing length computation.
+        They were logged during the standalone run of CLUBB. Note that, when embedded in
+        a host model, the constants may be different. Keys match the names used internally
+        in CLUBB.
+"""
+
 import numpy as np
+import enum
+import typing
+import numpy.typing as npt
 from subgrid_parameterization.preprocess import SAM_helpers as sam
+
+
+FLOAT_T = typing.TypeVar("FLOAT_T", float, np.floating)
+
+
+CLUBB_STANDALONE_CONSTANTS: dict[str, float] = {
+    "Cp": 0.10046700000000000e04,
+    "Rd": 0.28704000000000002e03,
+    "ep": 0.62197183098591557e00,
+    "ep1": 0.60778985507246353e00,
+    "ep2": 0.16077898550724636e01,
+    "Lv": 0.25000000000000000e07,
+    "grav": 0.98100000000000005e01,
+    "eps": 0.10000000000000000e-09,
+}
 
 
 def get_mixing_length(ds):
@@ -92,15 +124,14 @@ def compute_mixing_length(
     # Constants
     zlmin = 0.1
     Lscale_sfclyr_depth = 500.0
-    grav = 9.81  # gravitational acceleration
-    cp = 1004.0  # Specific heat capacity of air at constant pressure
-    Rd = 287.0  # Gas constant for dry air
-    Rv = 461.0  # Gas constant for water vapor
-    Lv = 2.5e6  # Latent heat of vaporization
-    eps = 1e-6  # Small threshold value
-    ep = Rd / Rv
-    ep1 = (1 - ep) / ep
-    ep2 = 1 / ep
+    grav = CLUBB_STANDALONE_CONSTANTS["grav"]
+    cp = CLUBB_STANDALONE_CONSTANTS["Cp"]
+    Rd = CLUBB_STANDALONE_CONSTANTS["Rd"]
+    Lv = CLUBB_STANDALONE_CONSTANTS["Lv"]
+    eps = CLUBB_STANDALONE_CONSTANTS["eps"]
+    ep = CLUBB_STANDALONE_CONSTANTS["ep"]
+    ep1 = CLUBB_STANDALONE_CONSTANTS["ep1"]
+    ep2 = CLUBB_STANDALONE_CONSTANTS["ep2"]
 
     # Compute turbulent kinetic energy (TKE)
     tke_i = (em[:, :-1] + em[:, 1:]) / 2
@@ -147,7 +178,9 @@ def compute_mixing_length(
     rt_par_1 = np.full(rtm.shape, np.nan)
     rt_par_1[:, 1:] = rtm[:, 1:] - (rtm[:, 1:] - rtm[:, :-1]) * entrain_coef[:, 1:-1]
 
-    rsatl_par_1 = sat_mixrat_liq(tl_par_1, p_in_Pa)
+    rsatl_par_1 = sat_mixrat_liq(
+        tl_par_1, p_in_Pa, saturation_formula=saturation_formula
+    )
 
     tl_par_1_sqd = tl_par_1**2
 
@@ -183,7 +216,9 @@ def compute_mixing_length(
 
                     tl_par_j = thl_par_j * exner[i, j]
 
-                    rsatl_par_j = sat_mixrat_liq(tl_par_j, p_in_Pa[i, j])
+                    rsatl_par_j = sat_mixrat_liq(
+                        tl_par_j, p_in_Pa[i, j], saturation_formula=saturation_formula
+                    )
 
                     tl_par_j_sqd = tl_par_j**2
 
@@ -289,7 +324,9 @@ def compute_mixing_length(
 
     rt_par_1[:, :-1] = rtm[:, :-1] - (rtm[:, :-1] - rtm[:, 1:]) * entrain_coef[:, 1:-1]
 
-    rsatl_par_1 = sat_mixrat_liq(tl_par_1, p_in_Pa)
+    rsatl_par_1 = sat_mixrat_liq(
+        tl_par_1, p_in_Pa, saturation_formula=saturation_formula
+    )
 
     tl_par_1_sqd = tl_par_1**2
 
@@ -309,7 +346,7 @@ def compute_mixing_length(
 
     for i in range(ngrdcol):
         Lscale_down_min_alt = zt[i, -1]
-        for k in range(nzt - 1, 1, -1):
+        for k in range(nzt - 1, 0, -1):
             if tke_i[i, k] - CAPE_incr_1[i, k - 1] > 0.0:
                 tke = tke_i[i, k] - CAPE_incr_1[i, k - 1]
                 j = k - 2
@@ -327,7 +364,9 @@ def compute_mixing_length(
 
                     tl_par_j = thl_par_j * exner[i, j]
 
-                    rsatl_par_j = sat_mixrat_liq(tl_par_j, p_in_Pa[i, j])
+                    rsatl_par_j = sat_mixrat_liq(
+                        tl_par_j, p_in_Pa[i, j], saturation_formula=saturation_formula
+                    )
 
                     tl_par_j_sqd = tl_par_j**2
 
@@ -401,23 +440,103 @@ def compute_mixing_length(
             * lmin
             * invrs_Lscale_sfclyr_depth
         )
+    else:
+        lminh = (
+            np.maximum(0.0, Lscale_sfclyr_depth - zt) * lmin * invrs_Lscale_sfclyr_depth
+        )
 
     Lscale_up = np.maximum(lminh, Lscale_up)
     Lscale_down = np.maximum(lminh, Lscale_down)
 
     Lscale = np.sqrt(Lscale_up * Lscale_down)
 
-    # Lscale[:, -1] = Lscale[:, -2]
+    Lscale[:, -1] = Lscale[:, -2]
     Lscale = np.minimum(Lscale, Lscale_max)
-
     return Lscale, Lscale_up, Lscale_down
 
 
-def sat_mixrat_liq(T, p):
+class SaturationFormula(enum.Enum):
     """
-    Calculate the saturation mixing ratio given temperature (K) and pressure (Pa).
-    Using the Clausius-Clapeyron equation approximation.
+    Mirrors avaliable saturation formula options in CLUBB.
+
+    Taken from:
+    https://github.com/m2lines/clubb_ML/blob/master/src/CLUBB_core/model_flags.F90#L120-L125
     """
-    es = 6.112 * np.exp((17.67 * (T - 273.15)) / (T - 29.65)) * 100  # Convert hPa to Pa
-    epsilon = 0.622  # Ratio of molecular weights (water vapor/dry air)
+
+    BOLTON = 1
+    GFDL = 2
+    FLATAU = 3
+    LOOKUP = 4
+
+
+def _sat_flatau(T):
+    T_FREEZE_K = 273.15
+    MIN_T_IN_C = -85.0
+
+    T_in_C = T - T_FREEZE_K
+    T_in_C = np.maximum(T_in_C, MIN_T_IN_C)
+
+    T_in_C_sqd = T_in_C**2
+
+    return (
+        -3.21582393e-14
+        * (T_in_C - 646.5835252598777)
+        * (T_in_C + 90.72381630364440)
+        * (T_in_C_sqd + 111.0976961559954 * T_in_C + 6459.629194243118)
+        * (T_in_C_sqd + 152.3131930092453 * T_in_C + 6499.774954705265)
+        * (T_in_C_sqd + 174.4279584934021 * T_in_C + 7721.679732114084)
+    )
+
+
+@typing.overload
+def sat_mixrat_liq(
+    T: FLOAT_T,
+    p: FLOAT_T,
+    saturation_formula: SaturationFormula | int = SaturationFormula.BOLTON,
+) -> FLOAT_T: ...
+@typing.overload
+def sat_mixrat_liq(
+    T: npt.NDArray[FLOAT_T],
+    p: npt.NDArray[FLOAT_T],
+    saturation_formula: SaturationFormula | int = SaturationFormula.BOLTON,
+) -> npt.NDArray[FLOAT_T]: ...
+
+
+def sat_mixrat_liq(T, p, saturation_formula=SaturationFormula.BOLTON):
+    """
+    Computes the saturation mixing ratio over liquid water.
+
+    Based on the implementation in CLUBB `saturation` module. Avaiable at:
+
+    https://github.com/m2lines/clubb_ML/blob/92b8d7aeeafc1b045641b4c91806144a1c68945b/src/CLUBB_core/saturation.F90
+
+    Parameters
+    ----------
+    T : np.ndarray | float
+        Temperature [K]
+    p : np.ndarray | float
+        Pressure [Pa]
+    saturation_formula : SaturationFormula | int, optional
+        The saturation formula to use. The default is SaturationFormula.BOLTON.
+
+    Returns
+    -------
+    np.ndarray | float
+        Saturation mixing ratio over liquid water.
+    """
+    saturation_formula = SaturationFormula(saturation_formula)
+    # Ratio of molecular weights (water vapor/dry air)
+    epsilon = CLUBB_STANDALONE_CONSTANTS["ep"]
+
+    match saturation_formula:
+        case SaturationFormula.BOLTON:
+            es = (
+                6.112 * np.exp((17.67 * (T - 273.15)) / (T - 29.65)) * 100
+            )  # Convert hPa to Pa
+        case SaturationFormula.FLATAU:
+            es = _sat_flatau(T)
+        case _:
+            raise NotImplementedError(
+                f"Saturation formula {saturation_formula} in not implemented yet."
+            )
     return epsilon * es / (p - es)
