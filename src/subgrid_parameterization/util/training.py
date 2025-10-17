@@ -8,6 +8,8 @@ from pathlib import Path
 import numpy.typing as npt
 import numpy as np
 
+from dataclasses import dataclass
+
 from scipy.interpolate import interp1d
 import scipy.sparse
 
@@ -39,6 +41,96 @@ def read_as_xarray(path: Path | str) -> xr.Dataset:
         )
 
     return xr.open_dataset(path)
+
+
+@dataclass(frozen=True)
+class CLUBBGrids:
+    """
+    Pair of CLUBB like (momentum and thermodynamic) grids.
+
+    Refer to:
+    https://github.com/m2lines/clubb_ML/blob/92b8d7aeeafc1b045641b4c91806144a1c68945b/src/CLUBB_core/grid_class.F90
+    for extra details on CLUBB grids.
+
+    We assume that the functions are represented as average values over the cells
+    and the grids are staggered such that the thermodynamic grid `zt` values are
+    edges of the cells of the momentum grid and vice-versa.
+
+    We do store the cell edges explicitly as separate arrays to allow us do deal
+    with the problem of how to define edges at the top and bottom of the grid
+    and we need to introduce one extra edge to either grid.
+
+    To construct the grids use on of the provided factory methods.
+
+    Attributes
+    ----------
+    zm : numpy.ndarray
+        CLUBB momentum grid [meters].
+    zt : numpy.ndarray
+        CLUBB thermodynamic grid [meters].
+    zm_cell_edges : numpy.ndarray
+        Edges of the cells of the CLUBB momentum grid [meters].
+    zt_cell_edges : numpy.ndarray
+        Edges of the cells of the CLUBB thermodynamic grid [meters].
+    """
+
+    zm: npt.NDArray[np.float64]
+    zt: npt.NDArray[np.float64]
+
+    zm_cell_edges: npt.NDArray[np.float64]
+    zt_cell_edges: npt.NDArray[np.float64]
+
+    def __post_init__(self) -> None:
+        """Make it really immutable."""
+        self.zm.setflags(write=False)
+        self.zt.setflags(write=False)
+        self.zm_cell_edges.setflags(write=False)
+        self.zt_cell_edges.setflags(write=False)
+
+    @classmethod
+    def from_momentum_grid(cls, zm: npt.NDArray[np.float64]) -> "CLUBBGrids":
+        """
+        Grid defined from momentum levels (CLUBB grid_type = 3).
+
+        The thermodynamic levels are derived from the momentum levels as mid-points
+        of the momentum grid cells. So if len(zm) is N, then len(zt) is N-1.
+
+        Defining the momentum grid cells is a bit ambiguous, we take following
+        assumptions:
+          - The bottom edge is degenerate and starts at zm[0] (i.e. level stores
+          average over the call but is placed at the start of the cell)
+          - The top edge is defined such that the top momentum level is at
+          the mid-point. Consequently thermodynamic and momentum grids span
+          different ranges.
+
+        Parameters
+        ----------
+        zm : numpy.ndarray
+            Edges of the cells of the CLUBB momentum grid [meters]. Sorted,
+            strictly increasing.
+        """
+        # Check preconditions of the CLUBB momentum grid
+        zm = np.array(zm, dtype=np.float64)
+
+        if not np.all(zm[1:] > zm[:-1]):
+            raise ValueError("CLUBB momentum grid must strictly increasing.")
+
+        if len(zm) < 2:
+            raise ValueError(
+                f"CLUBB momentum grid must have at least two levels. Got {len(zm)} levels."
+            )
+
+        # Thermodynamic grid parameters
+        zt = (zm[:-1] + zm[1:]) / 2
+        zt__cell_edges = zm
+
+        # Define momentum grid cell edges
+        top_zm_edge = zt[-1] + 2.0 * (zm[-1] - zt[-1])
+        zm_cell_edges = np.concatenate([[zm[0]], zt, [top_zm_edge]])
+
+        return cls(
+            zm=zm, zt=zt, zm_cell_edges=zm_cell_edges, zt_cell_edges=zt__cell_edges
+        )
 
 
 class SAMDataInterface:

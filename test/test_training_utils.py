@@ -322,3 +322,57 @@ class TestSAMDataInterface_interpolation_matrix:
         with pytest.raises(ValueError):
             # from_grid
             train.SAMDataInterface.create_interpolation_matrix(to_grid, np.array([0.0]))
+
+
+class TestCLUBBGrids:
+    """Test the interface for construction of the CLUBB-like grids."""
+
+    def test_from_momentum_grid(self):
+        zm = np.array([0.0, 1.0, 2.2, 3.0])
+        grids = train.CLUBBGrids.from_momentum_grid(zm)
+
+        def do_verification(grids, zm):
+            zt_expected = np.array([0.5, 1.6, 2.6])
+            zt_edges = np.array([0.0, 1.0, 2.2, 3.0])
+
+            zm_edges = np.array([0.0, 0.5, 1.6, 2.6, 3.4])
+
+            np.testing.assert_array_equal(grids.zt, zt_expected)
+            np.testing.assert_array_equal(grids.zt_cell_edges, zt_edges)
+
+            np.testing.assert_array_equal(grids.zm, zm)
+            np.testing.assert_array_equal(grids.zm_cell_edges, zm_edges)
+
+        do_verification(grids, zm)
+
+        # Assert we are not aliasing anything
+        # We want to make sure we cannot modify the grids via the input array
+        zm_copy = zm.copy()
+        zm[0] = 10.0
+        do_verification(grids, zm_copy)
+
+        # Make sure the arrays are really immutable
+        with pytest.raises(ValueError):
+            grids.zm[0] = 0.0
+        with pytest.raises(ValueError):
+            grids.zt[0] = 0.0
+        with pytest.raises(ValueError):
+            grids.zm_cell_edges[0] = 0.0
+        with pytest.raises(ValueError):
+            grids.zt_cell_edges[0] = 0.0
+
+    def test_from_momentum_grid_errors(self):
+        # Need at least two momentum levels to define thermodynamic levels
+        zm = np.array([0.0])
+        with pytest.raises(ValueError):
+            train.CLUBBGrids.from_momentum_grid(zm)
+
+        # Non-monotonic grid
+        zm = np.array([0.0, 2.0, 1.0])
+        with pytest.raises(ValueError):
+            train.CLUBBGrids.from_momentum_grid(zm)
+
+        # Grid with NaN
+        zm = np.array([0.0, np.nan, 2.0])
+        with pytest.raises(ValueError):
+            train.CLUBBGrids.from_momentum_grid(zm)
