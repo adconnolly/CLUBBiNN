@@ -113,7 +113,7 @@ class TestSAMDataInterface:
     @pytest.mark.parametrize("var_name", ["U", "V"])
     def test_projection(self, data_with_coarsened_clubb_grid, var_name):
         """
-        Use coarsen SAM grid as a target.
+        Use coarsened SAM grid as a target.
 
         Basically we don't need to test that the projection matrix is correct
         since it is the role of other tests. Here we just want to assert that
@@ -122,7 +122,7 @@ class TestSAMDataInterface:
         We want target CLUBB-like cells to fit nicely inside SAM cells to
         make reference averaging easy.
         """
-        # Compare against the reference"
+        # Compare against the reference
         sam_data = data_with_coarsened_clubb_grid
         var_zm = sam_data.get_sam_variable_on_clubb_grid(var_name, grid_type="zm")
         var_zt = sam_data.get_sam_variable_on_clubb_grid(var_name, grid_type="zt")

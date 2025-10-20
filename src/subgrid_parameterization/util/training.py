@@ -46,7 +46,7 @@ def read_as_xarray(path: Path | str) -> xr.Dataset:
 @dataclass(frozen=True)
 class CLUBBGrids:
     """
-    Pair of CLUBB like (momentum and thermodynamic) grids.
+    Pair of CLUBB-like (momentum and thermodynamic) grids.
 
     Refer to:
     https://github.com/m2lines/clubb_ML/blob/92b8d7aeeafc1b045641b4c91806144a1c68945b/src/CLUBB_core/grid_class.F90
@@ -60,7 +60,7 @@ class CLUBBGrids:
     with the problem of how to define edges at the top and bottom of the grid
     and we need to introduce one extra edge to either grid.
 
-    To construct the grids use on of the provided factory methods.
+    To construct the grids use one of the provided factory methods.
 
     Attributes
     ----------
@@ -90,18 +90,17 @@ class CLUBBGrids:
     @classmethod
     def from_momentum_grid(cls, zm: npt.NDArray[np.float64]) -> "CLUBBGrids":
         """
-        Grid defined from momentum levels (CLUBB grid_type = 3).
+        Returns a grid defined from input momentum levels (CLUBB grid_type = 3).
 
-        The thermodynamic levels are derived from the momentum levels as mid-points
-        of the momentum grid cells. So if len(zm) is N, then len(zt) is N-1.
-
-        Defining the momentum grid cells is a bit ambiguous, we take following
-        assumptions:
+        The momentum grid is defined from the input array zm with the following assumptions:
           - The bottom edge is degenerate and starts at zm[0] (i.e. level stores
           average over the call but is placed at the start of the cell)
           - The top edge is defined such that the top momentum level is at
-          the mid-point. Consequently thermodynamic and momentum grids span
+          the final mid-point. Consequently thermodynamic and momentum grids span
           different ranges.
+
+        The thermodynamic levels are derived from the momentum levels as mid-points
+        of the momentum grid cells. So if len(zm) is N, then len(zt) is N-1.
 
         Parameters
         ----------
@@ -141,7 +140,7 @@ class SAMDataInterface:
     grids to provide an interface to interpolate LES predictions onto the
     CLUBB representation.
 
-    SAM in System for Atmospheric Modelling [http://rossby.msrc.sunysb.edu/SAM.html]
+    SAM is the System for Atmospheric Modelling [http://rossby.msrc.sunysb.edu/SAM.html]
 
     CLUBB has two grids in a single column [https://arxiv.org/pdf/1711.03675v1#nameddest=url:clubb_grid]:
      - `zm`: Momentum grid
@@ -154,6 +153,7 @@ class SAMDataInterface:
       - Variables (dims: ("time", "z", "y", "x"))
 
     Only datasets with degenerate y and x dimensions are supported.
+    i.e. single atmospheric columns.
 
     Example
     -------
@@ -281,7 +281,7 @@ class SAMDataInterface:
         start_point: np.floating, midpoints: npt.NDArray[T_FLOAT]
     ) -> npt.NDArray[T_FLOAT]:
         """
-        Compute cell edges from mid-point values.
+        Compute cell edges from mid-point values for an arbitrary grid.
 
         Parameters
         ----------
