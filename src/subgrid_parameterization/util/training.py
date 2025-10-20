@@ -36,8 +36,6 @@ def read_as_xarray(path: Path | str) -> xr.Dataset:
     if not path.is_file():
         raise ValueError(f"Path '{path}' does not point to a file.")
     if path.suffix != ".nc":
-        # TODO, Review: This warning may be useless, since in most cases it will be
-        #  immediately followed by some error.
         warnings.warn(
             f"File does not have '.nc' suffix, but {path.suffix}. Are you sure it is a NetCDF file?"
         )
