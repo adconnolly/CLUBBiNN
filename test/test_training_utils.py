@@ -47,15 +47,13 @@ def test_read_as_xarray(netcdf_files):
 @pytest.fixture
 def reference_z_grids(test_files_dir):
     """
-    Reference z-grids computed from BOMEX dataset for regression check.
+    Reference CLUBB `zt` and `zm` grids computed from BOMEX dataset for regression check.
 
     Obtained using the previous version of the pre-processing code.
-
     """
-    z_sam = np.genfromtxt(test_files_dir / "reference_SAM_z_grid.csv", delimiter=",")
     zm = np.genfromtxt(test_files_dir / "reference_CLUBB_zm_grid.csv", delimiter=",")
     zt = np.genfromtxt(test_files_dir / "reference_CLUBB_zt_grid.csv", delimiter=",")
-    return z_sam, zm, zt
+    return zm, zt
 
 
 @pytest.fixture
@@ -401,7 +399,7 @@ class TestCLUBBGrids:
             train.CLUBBGrids.from_momentum_grid(zm)
 
     def test_regression_from_momentum_grid(self, reference_z_grids):
-        _, zm_ref, zt_ref = reference_z_grids
+        zm_ref, zt_ref = reference_z_grids
 
         grids = train.CLUBBGrids.from_momentum_grid(zm_ref)
         np.testing.assert_array_equal(grids.zm, zm_ref)
