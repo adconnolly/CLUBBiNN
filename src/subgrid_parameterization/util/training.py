@@ -156,6 +156,54 @@ class SAMDataInterface:
       - Variables (dims: ("time", "z", "y", "x"))
 
     Only datasets with degenerate y and x dimensions are supported.
+
+    Example
+    -------
+
+    To project the SAM LES data to the CLUBB grid we need to construct
+    the `SAMDataInterface` by providing it the `xarray.Dataset` with the
+    SAM results and CLUBB-like grids via the `CLUBBGrids` class:
+
+    .. code-block:: python
+
+        import xarray as xr
+        import numpy as np
+        import subgrid_parameterization.util.training as train
+
+        sam_dataset = xr.open_dataset("LES_results.nc")
+
+        # We need some momentum grid that
+        # We can obtain it by coarsening the SAM z grid
+        z_sam = np.asarray(sam_dataset["z"].values, dtype=np.float64)
+        zm_clubb = np.concatenate(([0.0], 0.5 * (z_sam[1:-1:2] + z_sam[2::2])))
+        grids = train.CLUBBGrids.from_momentum_grid(zm_clubb)
+
+        sam_data = train.SAMDataInterface(sam_dataset, grids)
+
+
+    Internally, the interface constructs sparse projection matrices that allow
+    mapping the SAM variables onto either of CLUBB grids. To access the variables
+    use the provided method:
+
+    .. code-block:: python
+
+        u_clubb_zt = sam_data.get_sam_variable_on_clubb_grid("U", "zt")
+        u_clubb_zm = sam_data.get_sam_variable_on_clubb_grid("U", "zm")
+
+        assert u_clubb_zt.shape == (sam_dataset.sizes["time"], len(grids.zt))
+        assert u_clubb_zm.shape == (sam_dataset.sizes["time"], len(grids.zm))
+
+    Note that pressure is treated specially with a separate method since it is
+    time invariant (hence method returns rank 1 array versus rank 2 for
+    time-dependent variables)
+
+    .. code-block:: python
+
+        p_clubb_zt = sam_data.get_sam_pressure_on_clubb_grid("zt")
+        p_clubb_zm = sam_data.get_sam_pressure_on_clubb_grid("zm")
+
+        assert p_clubb_zt.shape == (len(grids.zt),)
+        assert p_clubb_zm.shape == (len(grids.zm),)
     """
 
     _sam_dataset: xr.Dataset
