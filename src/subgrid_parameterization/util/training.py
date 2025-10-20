@@ -10,8 +10,9 @@ import numpy as np
 
 from dataclasses import dataclass
 
-from scipy.interpolate import interp1d
 import scipy.sparse
+
+T_FLOAT = typing.TypeVar("T_FLOAT", bound=np.floating)
 
 
 def read_as_xarray(path: Path | str) -> xr.Dataset:
@@ -136,7 +137,7 @@ class CLUBBGrids:
 class SAMDataInterface:
     """Wraps around SAM-LES results to expose data in a CLUBB-like fashion.
 
-    SAM in System for Atmospheric Modelling [http://rossby.msrc.sunysb.edu/SAM.html] # TODO: Verify this
+    SAM in System for Atmospheric Modelling [http://rossby.msrc.sunysb.edu/SAM.html]
 
     Since CLUBB is using a staggered grid, but the LES is not, some variables
     must be represented in a different location (on an offset grid).
@@ -144,9 +145,6 @@ class SAMDataInterface:
     CLUBB has two grids in a single column [https://arxiv.org/pdf/1711.03675v1#nameddest=url:clubb_grid]:
      - `zm`: Momentum grid
      - `zt`: Thermodynamic grid
-
-    #TODO: Document the logic of how LES grid is converted to CLUBB grids Here.
-    #      I fear I do not understand exactly why it is done like it is
 
     SAM variables exist in three flavours:
       - Time invariant pressure profile (dims: ("z"))
@@ -157,56 +155,22 @@ class SAMDataInterface:
 
     _sam_dataset: xr.Dataset
 
-    _zm: npt.NDArray[np.float64]
-    _zt: npt.NDArray[np.float64]
+    _grids: CLUBBGrids
 
-    @staticmethod
-    def convert_sam_grid_to_clubb(
-        z_sam: npt.ArrayLike,
-    ) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
-        """Construct CLUBB grids from the SAM LES grid:
+    _z_to_zm_matrix: scipy.sparse.csr_array
+    _z_to_zt_matrix: scipy.sparse.csr_array
 
-        Parameters
-        ----------
-        z_sam : numpy.array_like
-            Vertical grid from SAM LES results [meters]
-            In principle can have a rank 1 or 2 (when grid varies with time).
-            However only rank 1 is implemented at the moment.
-
-        Returns
-        -------
-        numpy.ndarray[np.float64]
-            zm : CLUBB Momentum grid [meters]
-        numpy.ndarray[np.float64]
-            zt : CLUBB Thermodynamic grid [meters]
-        """
-
-        # Ensure that we will return the correct type
-        z_sam = np.asarray(z_sam, dtype=np.float64)
-
-        if len(z_sam.shape) != 1:
-            # OK, indexing with Ellipsis below should take care of rank 2 (and higher) case
-            # but remove error only after thorough testing
-            raise NotImplementedError(
-                "Time-varying grid is not yet supported. SAM grid must be rank 1 at the moment."
-            )
-
-        # TODO: The code does exactly what it did before, but we need to
-        #   document the motivation behind what it is doing.
-        #   e.g. why is the 0th element ignored
-        zm = 0.5 * (z_sam[..., 1:-1:2] + z_sam[..., 2::2])
-        zm = np.insert(zm, 0, 0.0, axis=-1)  # Add surface level at the bottom
-        zt = (zm[..., :-1] + zm[..., 1:]) / 2
-        return zm, zt
-
-    def __init__(self, sam_dataset: xr.Dataset):
+    def __init__(self, sam_dataset: xr.Dataset, grids: CLUBBGrids) -> None:
         """Initialize the data interface.
 
         Parameters
         ----------
         sam_dataset : xarray.Dataset
             Dataset containing SAM-LES results.
+        grids : CLUBBGrids
+            CLUBB-like momentum and thermodynamic grids.
         """
+        # Load the dataset
         self._sam_dataset = sam_dataset.copy(deep=True)
 
         # Verify that only expected coordinates are present in the dataset
@@ -226,28 +190,96 @@ class SAMDataInterface:
             )
         self._sam_dataset = self._sam_dataset.squeeze()
 
-        # Convert the SAM grid to CLUBB grids
-        self._zm, self._zt = self.convert_sam_grid_to_clubb(sam_dataset["z"].values)
+        # Load the grids
+        # They are immutable so no need to copy
+        self._grids = grids
 
-        # Paranoid people make their read-only data read-only
-        self._zm.setflags(write=False)
-        self._zt.setflags(write=False)
+        # We need to infer the edges of the SAM grid cells from the mid-point values
+        # We assume that the grid starts at ground level
+        sam_z = np.asarray(self._sam_dataset["z"].values, dtype=np.float64)
+        sam_z_edges = self.edges_from_midpoints(0.0, sam_z)
+
+        # Store projection matrices from SAM grid to CLUBB grids
+        self._z_to_zm_matrix = self.create_interpolation_matrix(
+            grids.zm_cell_edges, sam_z_edges
+        )
+        self._z_to_zt_matrix = self.create_interpolation_matrix(
+            grids.zt_cell_edges, sam_z_edges
+        )
 
     @property
-    def zm(self) -> npt.NDArray[np.float64]:
-        """CLUBB Momentum grid [meters]"""
-        return self._zm
+    def grids(self) -> CLUBBGrids:
+        """Get the CLUBB-like grids."""
+        return self._grids
 
     @property
-    def zt(self) -> npt.NDArray[np.float64]:
-        """CLUBB Thermodynamic grid [meters]"""
-        return self._zt
+    def sam_dataset(self) -> xr.Dataset:
+        """Get the underlying SAM dataset."""
+        return self._sam_dataset
 
-    T = typing.TypeVar("T", bound=np.floating)
+    @staticmethod
+    def edges_from_midpoints(
+        start_point: np.floating, midpoints: npt.NDArray[T_FLOAT]
+    ) -> npt.NDArray[T_FLOAT]:
+        """
+        Compute cell edges from mid-point values.
+
+        Parameters
+        ----------
+        start_point : T_FLOAT
+            Location of the start of the first (bottom) cell. Will be converted
+            to the same dtype as midpoints, hence may shift slightly.
+        midpoints : numpy.ndarray[T_FLOAT]
+            Mid-point values of the cells.
+
+        Returns
+        -------
+        numpy.ndarray[T_FLOAT]
+            Cell edge values.
+        """
+        start_point = midpoints.dtype.type(start_point)
+
+        # Empty midpoints
+        if len(midpoints) == 0:
+            raise ValueError("Midpoints array must not be empty.")
+
+        # Invalid start point
+        if start_point >= midpoints[0]:
+            raise ValueError(
+                f"start_point '{start_point}' must be less than the first midpoint value '{midpoints[0]}'."
+            )
+
+        # Check monotonicity of midpoints
+        if not np.all(midpoints[1:] > midpoints[:-1]):
+            raise ValueError("Midpoints must be strictly increasing.")
+
+        # Do a loop for now and refactor later
+        edges = [start_point]
+        for mid_point in midpoints:
+            last_edge = edges[-1]
+            next_edge = 2.0 * mid_point - last_edge
+            edges.append(next_edge)
+        edges = np.array(edges, dtype=midpoints.dtype)
+
+        # Throw error if the reconstruction is invalid
+        # Grid is strictly increasing
+        if not np.all(edges[1:] > edges[:-1]):
+            raise ValueError(
+                "Reconstruction has failed to produce a valid grid. Not increasing."
+            )
+
+        # Interior edges are between midpoints
+        # TODO: Is this check redundant given the above? Probably. Get 2nd opinion during review!
+        if not np.all(midpoints > edges[:-1]) or not np.all(midpoints < edges[1:]):
+            raise ValueError(
+                "Reconstruction has failed to produce a valid grid. Midpoints not between edges."
+            )
+
+        return edges
 
     @staticmethod
     def create_interpolation_matrix(
-        to_grid: npt.NDArray[T], from_grid: npt.NDArray[T]
+        to_grid: npt.NDArray[T_FLOAT], from_grid: npt.NDArray[T_FLOAT]
     ) -> scipy.sparse.csr_array:
         """Create piece-wise constant interpolation matrix between two 1d grids.
 
@@ -327,70 +359,26 @@ class SAMDataInterface:
             ) / (y_t - y_b)
         return scipy.sparse.csr_array(matrix)
 
-    @staticmethod
-    def interpolate_with_extrapolation(
-        x_new: npt.NDArray[T], x: npt.NDArray[T], y: npt.NDArray[T]
-    ) -> npt.NDArray[T]:
-        """Piece-wise linear interpolate y(x) to new grid with extrapolation.
-
-        Parameters
-        ----------
-        x_new : numpy.ndarray[T]
-            New grid
-        x : numpy.ndarray[T]
-            Original grid that must be 1D array
-        y : numpy.ndarray[T]
-            Original y values.
-
-        Where T is some floating point dtype.
-
-        Returns
-        -------
-        numpy.ndarray[T]
-            Interpolated (or extrapolated) y values at x_new.
-        """
-
-        # Do not allow silent mixed precision computation
-        # Check that dtype of all inputs matches
-        if x_new.dtype != x.dtype or x.dtype != y.dtype:
-            raise ValueError(
-                "Mixed precision is not supported. Cast all inputs to same dtype before call. Was given: "
-                f"x_new.dtype={x_new.dtype}, x.dtype={x.dtype}, y.dtype={y.dtype}"
-            )
-
-        # Make error in case of ND x array more explicit
-        if len(x.shape) != 1:
-            raise ValueError(f"Original x grid must be 1D array. Has shape: {x.shape}")
-
-        # TODO: interp1d is 'Legacy' (but not deprecated). Perhaps this should be replaced.
-        interpolator = interp1d(
-            x,
-            y,
-            axis=-1,
-            fill_value="extrapolate",
-        )
-        return interpolator(x_new)
-
     def get_sam_variable_on_clubb_grid(
         self, varname: str, grid_type: str
     ) -> npt.NDArray[np.float64]:
-        """Get a SAM result variable interpolated on the CLUBB grid.
+        """Get a SAM result variable projected to the CLUBB grid.
 
         Parameters
         ----------
         varname : str
             Name of the variable in the SAM dataset.
         grid : str
-            Target grid for interpolation. Must be either 'zm' or 'zt'.
+            Target grid for projection. Must be either 'zm' or 'zt'.
 
         Returns
         -------
         numpy.ndarray
-            Interpolated variable on the target grid.
+            Projected variable on the target grid.
         """
         if grid_type not in ("zm", "zt"):
             raise ValueError(
-                "SAM variable must be interpolated on either CLUBB momentum ('zm') or thermodynamic ('zt') grid."
+                "SAM variable must be projected on either CLUBB momentum ('zm') or thermodynamic ('zt') grid."
             )
 
         if varname not in self._sam_dataset:
@@ -402,39 +390,36 @@ class SAMDataInterface:
                 "If you are trying to access pressure, use the dedicated method."
             )
 
-        z = self._zm if grid_type == "zm" else self._zt
+        matrix = self._z_to_zm_matrix if grid_type == "zm" else self._z_to_zt_matrix
 
-        return self.interpolate_with_extrapolation(
-            z,
-            np.asarray(self._sam_dataset["z"].values, dtype=np.float64),
-            np.asarray(self._sam_dataset[varname].values, dtype=np.float64),
-        )
+        sam_var = np.asarray(self._sam_dataset[varname].values, dtype=np.float64)
+
+        # Perform the matrix multiplication for each time step
+        return sam_var @ matrix.T
 
     def get_sam_pressure_on_clubb_grid(self, grid_type: str) -> npt.NDArray[np.float64]:
-        """Get the SAM pressure variable interpolated on the CLUBB grid.
+        """Get the SAM pressure variable projected to the CLUBB grid.
 
         Parameters
         ----------
         grid : str
-            Target grid for interpolation. Must be either 'zm' or 'zt'.
+            Target grid for projection. Must be either 'zm' or 'zt'.
 
         Returns
         -------
         numpy.ndarray[np.float64]
-            Interpolated pressure on the target grid.
+            Projected pressure on the target grid.
         """
         if grid_type not in ("zm", "zt"):
             raise ValueError(
-                "SAM pressure must be interpolated on either CLUBB momentum ('zm') or thermodynamic ('zt') grid."
+                "SAM pressure must be projected to either CLUBB momentum ('zm') or thermodynamic ('zt') grid."
             )
 
         if "p" not in self._sam_dataset:
             raise ValueError("Pressure variable 'p' not found in the dataset.")
 
-        z = self._zm if grid_type == "zm" else self._zt
+        matrix = self._z_to_zm_matrix if grid_type == "zm" else self._z_to_zt_matrix
 
-        return self.interpolate_with_extrapolation(
-            z,
-            np.asarray(self._sam_dataset["z"].values, dtype=np.float64),
-            np.asarray(self._sam_dataset["p"].values, dtype=np.float64),
-        )
+        sam_p = np.asarray(self._sam_dataset["p"].values, dtype=np.float64)
+
+        return matrix @ sam_p

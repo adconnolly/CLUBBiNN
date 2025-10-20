@@ -56,143 +56,178 @@ def reference_z_grids(test_files_dir):
     return z_sam, zm, zt
 
 
-DATA_CASTERS = {
-    "numpy": lambda g: g,  # numpy array
-    "xarray": lambda g: xr.DataArray(
-        g, dims=["i"], coords={"i": list(range(len(g)))}
-    ),  # xarray DataArray
-    "list": lambda g: list(g),  # Python list
-}
+@pytest.fixture
+def clubb_like_grids():
+    """Provides a CLUBB-like grid for testing."""
+    zm = np.linspace(0.0, 1000.0, 51)
+    return train.CLUBBGrids.from_momentum_grid(zm)
 
 
-@pytest.mark.parametrize(
-    "input_data_type",
-    [
-        "numpy",
-        "xarray",
-        "list",
-    ],
-)
-def test_SAMDataInterface_grid(reference_z_grids, input_data_type):
-    # It is more of a regression test, we match the results for BOMEX dataset
-    # with the previous pre-processing code.
-    z_sam, zm_ref, zt_ref = reference_z_grids
+class TestSAMDataInterface:
+    def test_init_errors(self, bomex_dataset, clubb_like_grids):
+        ds = bomex_dataset
 
-    z_arg = DATA_CASTERS[input_data_type](z_sam)
-    zm, zt = train.SAMDataInterface.convert_sam_grid_to_clubb(z_arg)
-    np.testing.assert_equal(zm, zm_ref)
-    np.testing.assert_equal(zt, zt_ref)
+        # Missing coordinates
+        coords_to_remove = ["y", "x", "z", "time"]
+        for coord in coords_to_remove:
+            with pytest.raises(ValueError):
+                train.SAMDataInterface(ds.drop_vars(coord), clubb_like_grids)
 
+        # Non-degenerate y or x dimensions
+        for dim in ["y", "x"]:
+            # We expand the dataset along a dimension
+            temp = ds.copy(deep=True)
+            temp.coords[dim].values[0] = ds.coords[dim].values[0] + 1.0
+            combined = xr.concat([ds, temp], dim=dim, data_vars="minimal")
 
-def test_SAMDataInterface_grid_errors():
-    with pytest.raises(NotImplementedError):
-        # 2D grid not supported yet
-        train.SAMDataInterface.convert_sam_grid_to_clubb(np.array([[0, 1], [2, 3]]))
+            with pytest.raises(ValueError):
+                train.SAMDataInterface(combined, clubb_like_grids)
 
+    def test_init(self, bomex_dataset, clubb_like_grids):
+        # Just a smoke test
+        # TODO: Figure out something more sensible
+        sam_data = train.SAMDataInterface(bomex_dataset, clubb_like_grids)
 
-def test_SAMDataInterface_init(bomex_dataset):
-    # Just a smoke test
-    # TODO: Figure out something more sensible
-    sam_data = train.SAMDataInterface(bomex_dataset)
-    sam_data.zm
-    sam_data.zt
+        sam_data.grids.zm
+        sam_data.grids.zt
+        sam_data.sam_dataset
 
+    @pytest.mark.parametrize("var_name", ["U", "V"])
+    def test_projection(self, bomex_dataset, var_name):
+        """Use coarsen SAM grid as a target.
 
-def test_SAMDataInterface_init_errors(bomex_dataset):
-    ds = bomex_dataset
+        Basically we don't need to test that the projection matrix is correct
+        since it is the role of other tests. Here we just want to assert that
+        we use it correctly.
 
-    # Missing coordinates
-    coords_to_remove = ["y", "x", "z", "time"]
-    for coord in coords_to_remove:
+        We want target CLUBB-like cells to fit nicely inside SAM cells to
+        make reference averaging easy.
+        """
+        z_sam = np.asarray(bomex_dataset["z"], dtype=np.float64)
+        nzm = (len(z_sam) + 1) // 2
+        zm = np.concatenate(
+            ([0], 0.5 * (z_sam[1 : 2 * nzm - 1 : 2] + z_sam[2 : 2 * nzm - 1 : 2]))
+        )
+        grids = train.CLUBBGrids.from_momentum_grid(zm)
+
+        # Compare against the reference"
+        sam_data = train.SAMDataInterface(bomex_dataset, grids)
+        var_zm = sam_data.get_sam_variable_on_clubb_grid(var_name, grid_type="zm")
+        var_zt = sam_data.get_sam_variable_on_clubb_grid(var_name, grid_type="zt")
+
+        # Compute reference by averaging
+        sam_var = np.asarray(bomex_dataset[var_name], dtype=np.float64).squeeze()
+
+        # Note that for the momentum grid the fist cell is only half, hence
+        # it contains only a single SAM cell
+        var_zm_ref = np.empty_like(var_zm)
+        var_zm_ref[:, 0] = sam_var[:, 0]
+        var_zm_ref[:, 1:] = 0.5 * (sam_var[:, 1:-1:2] + sam_var[:, 2::2])
+
+        np.testing.assert_array_almost_equal_nulp(var_zm, var_zm_ref, nulp=4)
+
+        # For the thermodynamic grid we just don't have the top SAM cell in
+        # the range
+        var_zt_ref = 0.5 * (sam_var[:, 0:-2:2] + sam_var[:, 1:-1:2])
+        np.testing.assert_array_almost_equal_nulp(var_zt, var_zt_ref, nulp=4)
+
+    def test_projection_pressure(self, bomex_dataset):
+        """ "
+        See `test_projection` for details.
+
+        Pressure has it own dedicated method but logic is the same.
+        """
+        z_sam = np.asarray(bomex_dataset["z"], dtype=np.float64)
+        nzm = (len(z_sam) + 1) // 2
+        zm = np.concatenate(
+            ([0], 0.5 * (z_sam[1 : 2 * nzm - 1 : 2] + z_sam[2 : 2 * nzm - 1 : 2]))
+        )
+        grids = train.CLUBBGrids.from_momentum_grid(zm)
+
+        sam_data = train.SAMDataInterface(bomex_dataset, grids)
+        pressure_zm = sam_data.get_sam_pressure_on_clubb_grid(grid_type="zm")
+        pressure_zt = sam_data.get_sam_pressure_on_clubb_grid(grid_type="zt")
+
+        # Compute reference by averaging
+        sam_p = np.asarray(bomex_dataset["p"], dtype=np.float64).squeeze()
+
+        pressure_zm_ref = np.empty_like(pressure_zm)
+        pressure_zm_ref[0] = sam_p[0]
+        pressure_zm_ref[1:] = 0.5 * (sam_p[1:-1:2] + sam_p[2::2])
+        np.testing.assert_array_almost_equal_nulp(pressure_zm, pressure_zm_ref, nulp=4)
+
+        pressure_zt_ref = 0.5 * (sam_p[0:-2:2] + sam_p[1:-1:2])
+        np.testing.assert_array_almost_equal_nulp(pressure_zt, pressure_zt_ref, nulp=4)
+
+    def test_projection_errors(self, bomex_dataset):
+        z_sam = np.asarray(bomex_dataset["z"], dtype=np.float64)
+        nzm = (len(z_sam) + 1) // 2
+        zm = np.concatenate(
+            ([0], 0.5 * (z_sam[1 : 2 * nzm - 1 : 2] + z_sam[2 : 2 * nzm - 1 : 2]))
+        )
+        grids = train.CLUBBGrids.from_momentum_grid(zm)
+
+        sam_data = train.SAMDataInterface(bomex_dataset, grids)
+
+        # Invalid grid type
         with pytest.raises(ValueError):
-            train.SAMDataInterface(ds.drop_vars(coord))
-
-    # Non-degenerate y or x dimensions
-    for dim in ["y", "x"]:
-        # We expand the dataset along a dimension
-        temp = ds.copy(deep=True)
-        temp.coords[dim].values[0] = ds.coords[dim].values[0] + 1.0
-        combined = xr.concat([ds, temp], dim=dim, data_vars="minimal")
-
+            sam_data.get_sam_variable_on_clubb_grid("U", grid_type="invalid_grid")
         with pytest.raises(ValueError):
-            train.SAMDataInterface(combined)
+            sam_data.get_sam_pressure_on_clubb_grid(grid_type="invalid_grid")
 
-
-@np.vectorize
-def _ramp_function(x):
-    """Simple piecewise-linear function with several slopes."""
-    if x < 0:
-        return 0.0
-    elif x < 1.0:
-        return x
-    return 1.0 + (x - 1.0) * 0.5
-
-
-def test_SAMDataInterface_interpolation():
-    # NOTE: Must contain knots of the _ramp_function
-    x_coarse = np.array([-1.0, 0.0, 1.0, 2.0])
-    y_coarse = _ramp_function(x_coarse)
-
-    x_fine = np.linspace(-1.0, 3.0, 40)
-    y_fine = train.SAMDataInterface.interpolate_with_extrapolation(
-        x_fine, x_coarse, y_coarse
-    )
-    y_ref = _ramp_function(x_fine)
-
-    # We follow GTest conventions for 'narrow' FP tolerance
-    np.testing.assert_array_max_ulp(y_ref, y_fine, maxulp=4)
-
-
-def test_SAMDataInterface_interpolation_errors():
-    # Rejected mixed precision call
-    input = (
-        np.array([-1.0, 0.0, 1.0, 2.0], dtype=np.float64),
-        np.array([-1.0, 0.0, 1.0, 2.0], dtype=np.float64),
-        np.array([-1.0, 0.0, 1.0, 2.0], dtype=np.float64),
-    )
-    for i in range(len(input)):
-        # Apply conversion to 32-bit float to each argument in turn
-        new_inputs = [
-            np.asarray(x, dtype=np.float32) if i == j else x
-            for j, x in enumerate(input)
-        ]
+        # Invalid variable name
         with pytest.raises(ValueError):
-            train.SAMDataInterface.interpolate_with_extrapolation(*new_inputs)
+            sam_data.get_sam_variable_on_clubb_grid("Not is dataset", grid_type="zm")
+
+        # Accessing pressure via generic interface
+        with pytest.raises(ValueError):
+            sam_data.get_sam_variable_on_clubb_grid("p", grid_type="zm")
 
 
-def test_SAMDataInterface_variable_access(bomex_dataset):
-    sam_data = train.SAMDataInterface(bomex_dataset)
+class TestSAMDataInterface_midpoint_to_edges:
+    """Verify that the reverse computation of cell edges from mid-point values is correct."""
 
-    # We don't test the accuracy of the interpolation
-    # only errors and some generic properties of the shape of outputs
+    @pytest.mark.parametrize("seed", [42, 767, 867, 8975])
+    @pytest.mark.parametrize("max_z", [10.0, 100.0])
+    @pytest.mark.parametrize("n_edges", [3, 10])
+    @pytest.mark.parametrize("dtype", [np.float32, np.float64])
+    def test_on_random_grid(self, seed, max_z, n_edges, dtype):
+        """Round trip test on random but sensible input"""
+        prng = np.random.default_rng(seed)
 
-    # Valid use cases
-    res = sam_data.get_sam_variable_on_clubb_grid("U", grid_type="zm")
-    assert res.shape == (len(bomex_dataset["time"]), len(sam_data.zm))
+        # We create some random edges but make sure to start at 0!
+        edges = np.sort(
+            np.concatenate(
+                [[dtype(0.0)], prng.random(n_edges, dtype=dtype) * dtype(max_z)]
+            )
+        )
+        mid_points = 0.5 * (edges[:-1] + edges[1:])
+        edges_reconstructed = train.SAMDataInterface.edges_from_midpoints(
+            0.0, mid_points
+        )
 
-    res = sam_data.get_sam_variable_on_clubb_grid("THLM", grid_type="zt")
-    assert res.shape == (len(bomex_dataset["time"]), len(sam_data.zt))
+        assert edges_reconstructed.dtype == dtype
+        np.testing.assert_array_almost_equal_nulp(edges, edges_reconstructed, nulp=4)
 
-    pressure = sam_data.get_sam_pressure_on_clubb_grid(grid_type="zm")
-    assert pressure.shape == (len(sam_data.zm),)
+    def test_errors(self):
+        """Test that invalid inputs are rejected."""
+        # At least one mid-point is required
+        with pytest.raises(ValueError):
+            train.SAMDataInterface.edges_from_midpoints(
+                0.0, np.array([], dtype=np.float64)
+            )
 
-    pressure = sam_data.get_sam_pressure_on_clubb_grid(grid_type="zm")
-    assert pressure.shape == (len(sam_data.zm),)
+        # Inconsistent starting edge
+        with pytest.raises(ValueError):
+            train.SAMDataInterface.edges_from_midpoints(
+                0.0, np.array([1.0, 1.9], dtype=np.float64)
+            )
 
-    # Invalid use cases
-    # Invalid grid type
-    with pytest.raises(ValueError):
-        sam_data.get_sam_variable_on_clubb_grid("U", grid_type="invalid_grid")
-    with pytest.raises(ValueError):
-        sam_data.get_sam_pressure_on_clubb_grid(grid_type="invalid_grid")
-
-    # Invalid variable name
-    with pytest.raises(ValueError):
-        sam_data.get_sam_variable_on_clubb_grid("I am not in dataset", grid_type="zm")
-
-    # Invalid variable dimensions
-    with pytest.raises(ValueError):
-        sam_data.get_sam_variable_on_clubb_grid("p", grid_type="zm")
+        # Non-monotonic mid-point values
+        with pytest.raises(ValueError):
+            train.SAMDataInterface.edges_from_midpoints(
+                0.0, np.array([1.0, 2.0, 1.5], dtype=np.float64)
+            )
 
 
 class TestSAMDataInterface_interpolation_matrix:
@@ -376,3 +411,10 @@ class TestCLUBBGrids:
         zm = np.array([0.0, np.nan, 2.0])
         with pytest.raises(ValueError):
             train.CLUBBGrids.from_momentum_grid(zm)
+
+    def test_regression_from_momentum_grid(self, reference_z_grids):
+        _, zm_ref, zt_ref = reference_z_grids
+
+        grids = train.CLUBBGrids.from_momentum_grid(zm_ref)
+        np.testing.assert_array_equal(grids.zm, zm_ref)
+        np.testing.assert_array_equal(grids.zt, zt_ref)
