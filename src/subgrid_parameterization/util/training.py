@@ -312,7 +312,8 @@ class SAMDataInterface:
         if not np.all(midpoints[1:] > midpoints[:-1]):
             raise ValueError("Midpoints must be strictly increasing.")
 
-        # Do a loop for now and refactor later
+        # It is not the most efficient to do it as a loop but it is ok as
+        # it is not performance critical
         edges = [start_point]
         for mid_point in midpoints:
             last_edge = edges[-1]
@@ -328,7 +329,7 @@ class SAMDataInterface:
             )
 
         # Interior edges are between midpoints
-        # TODO: Is this check redundant given the above? Probably. Get 2nd opinion during review!
+        # This check is redundant with the one above but there is no harm in leaving it in
         if not np.all(midpoints > edges[:-1]) or not np.all(midpoints < edges[1:]):
             raise ValueError(
                 "Reconstruction has failed to produce a valid grid. Midpoints not between edges."
