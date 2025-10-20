@@ -1,8 +1,9 @@
-import torch
-import numpy as np
+"""Fully connected artificial neural network architectures in PyTorch."""
+
 import itertools
 
-""" Fully connected artificial neural network """
+import numpy as np
+import torch
 
 
 ## Construct a convolutional block
@@ -13,10 +14,7 @@ def make_layer(
     batch_norm=False,
     bias=False,
 ) -> list:
-    """
-    Packs ANN layer and optionally ReLU/BatchNorm2d
-    layers in a list
-    """
+    """Pack ANN layer and optionally ReLU/BatchNorm2d layers in a list."""
     layer = [torch.nn.Linear(in_features, out_features, bias=bias)]
     if activation is not None:
         layer.append(activation())
@@ -26,10 +24,10 @@ def make_layer(
 
 
 class ANN(torch.nn.Module):
+    """Class defining an ANN for use in code."""
+
     def __init__(self, N, activation=torch.nn.ReLU):
-        """
-        Packs sequence of artificial neural network layers in a list.
-        """
+        """Pack sequence of artificial neural network layers in a list."""
         super().__init__()
         ops = []
         # Following recipe for itertools.pairwise
@@ -62,16 +60,21 @@ class ANN(torch.nn.Module):
         self.ops = torch.nn.Sequential(*ops)
 
     def forward(self, x):
+        """Execute the forward method pasisng tensor through self.ops()."""
         return self.ops(x)
 
 
-class clipped_ANN(torch.nn.Module):
-    def __init__(self, N, range=[0, 2], activation=torch.nn.ReLU):
-        """
-        Packs sequence of artificial neural network layers in a list.
-        """
+class Clipped_ANN(torch.nn.Module):
+    """Class defining a Clipped ANN for use in code."""
+
+    def __init__(self, N, clamping_range=None, activation=torch.nn.ReLU):
+        """Packs sequence of artificial neural network layers in a list."""
         super().__init__()
         ops = []
+
+        if clamping_range is None:
+            clamping_range = [0, 2]
+
         # Following recipe for itertools.pairwise
         NA, NB = itertools.tee(N)
         next(NB, None)
@@ -101,8 +104,9 @@ class clipped_ANN(torch.nn.Module):
         # Bundle into Sequential for forward pass
         self.ops = torch.nn.Sequential(*ops)
 
-        self.min = range[0]
-        self.max = range[1]
+        self.min = clamping_range[0]
+        self.max = clamping_range[1]
 
     def forward(self, x):
+        """Execute the forward method pasisng tensor through self.ops()."""
         return self.ops(x).clamp(min=self.min, max=self.max)
