@@ -92,8 +92,24 @@ class TestSAMDataInterface:
         sam_data.grids.zt
         sam_data.sam_dataset
 
+    @pytest.fixture
+    def data_with_coarsened_clubb_grid(self, bomex_dataset):
+        """
+        Uses coarsened SAM grid as CLUBB grids.
+
+        The CLUBB momentum grid is build by combining two SAM cells into one
+        except for the first cell that corresponds to a single SAM cell.
+        """
+        z_sam = np.asarray(bomex_dataset["z"], dtype=np.float64)
+        nzm = (len(z_sam) + 1) // 2
+        zm = np.concatenate(
+            ([0], 0.5 * (z_sam[1 : 2 * nzm - 1 : 2] + z_sam[2 : 2 * nzm - 1 : 2]))
+        )
+        grids = train.CLUBBGrids.from_momentum_grid(zm)
+        return train.SAMDataInterface(bomex_dataset, grids)
+
     @pytest.mark.parametrize("var_name", ["U", "V"])
-    def test_projection(self, bomex_dataset, var_name):
+    def test_projection(self, data_with_coarsened_clubb_grid, var_name):
         """Use coarsen SAM grid as a target.
 
         Basically we don't need to test that the projection matrix is correct
@@ -103,20 +119,13 @@ class TestSAMDataInterface:
         We want target CLUBB-like cells to fit nicely inside SAM cells to
         make reference averaging easy.
         """
-        z_sam = np.asarray(bomex_dataset["z"], dtype=np.float64)
-        nzm = (len(z_sam) + 1) // 2
-        zm = np.concatenate(
-            ([0], 0.5 * (z_sam[1 : 2 * nzm - 1 : 2] + z_sam[2 : 2 * nzm - 1 : 2]))
-        )
-        grids = train.CLUBBGrids.from_momentum_grid(zm)
-
         # Compare against the reference"
-        sam_data = train.SAMDataInterface(bomex_dataset, grids)
+        sam_data = data_with_coarsened_clubb_grid
         var_zm = sam_data.get_sam_variable_on_clubb_grid(var_name, grid_type="zm")
         var_zt = sam_data.get_sam_variable_on_clubb_grid(var_name, grid_type="zt")
 
         # Compute reference by averaging
-        sam_var = np.asarray(bomex_dataset[var_name], dtype=np.float64).squeeze()
+        sam_var = np.asarray(sam_data.sam_dataset[var_name], dtype=np.float64)
 
         # Note that for the momentum grid the fist cell is only half, hence
         # it contains only a single SAM cell
@@ -131,25 +140,18 @@ class TestSAMDataInterface:
         var_zt_ref = 0.5 * (sam_var[:, 0:-2:2] + sam_var[:, 1:-1:2])
         np.testing.assert_array_almost_equal_nulp(var_zt, var_zt_ref, nulp=4)
 
-    def test_projection_pressure(self, bomex_dataset):
+    def test_projection_pressure(self, data_with_coarsened_clubb_grid):
         """ "
         See `test_projection` for details.
 
         Pressure has it own dedicated method but logic is the same.
         """
-        z_sam = np.asarray(bomex_dataset["z"], dtype=np.float64)
-        nzm = (len(z_sam) + 1) // 2
-        zm = np.concatenate(
-            ([0], 0.5 * (z_sam[1 : 2 * nzm - 1 : 2] + z_sam[2 : 2 * nzm - 1 : 2]))
-        )
-        grids = train.CLUBBGrids.from_momentum_grid(zm)
-
-        sam_data = train.SAMDataInterface(bomex_dataset, grids)
+        sam_data = data_with_coarsened_clubb_grid
         pressure_zm = sam_data.get_sam_pressure_on_clubb_grid(grid_type="zm")
         pressure_zt = sam_data.get_sam_pressure_on_clubb_grid(grid_type="zt")
 
         # Compute reference by averaging
-        sam_p = np.asarray(bomex_dataset["p"], dtype=np.float64).squeeze()
+        sam_p = np.asarray(sam_data.sam_dataset["p"], dtype=np.float64)
 
         pressure_zm_ref = np.empty_like(pressure_zm)
         pressure_zm_ref[0] = sam_p[0]
@@ -159,15 +161,8 @@ class TestSAMDataInterface:
         pressure_zt_ref = 0.5 * (sam_p[0:-2:2] + sam_p[1:-1:2])
         np.testing.assert_array_almost_equal_nulp(pressure_zt, pressure_zt_ref, nulp=4)
 
-    def test_projection_errors(self, bomex_dataset):
-        z_sam = np.asarray(bomex_dataset["z"], dtype=np.float64)
-        nzm = (len(z_sam) + 1) // 2
-        zm = np.concatenate(
-            ([0], 0.5 * (z_sam[1 : 2 * nzm - 1 : 2] + z_sam[2 : 2 * nzm - 1 : 2]))
-        )
-        grids = train.CLUBBGrids.from_momentum_grid(zm)
-
-        sam_data = train.SAMDataInterface(bomex_dataset, grids)
+    def test_projection_errors(self, data_with_coarsened_clubb_grid):
+        sam_data = data_with_coarsened_clubb_grid
 
         # Invalid grid type
         with pytest.raises(ValueError):
