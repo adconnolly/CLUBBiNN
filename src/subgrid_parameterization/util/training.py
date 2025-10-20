@@ -137,21 +137,24 @@ class CLUBBGrids:
 
 class SAMDataInterface:
     """
-    Wraps around SAM-LES results to expose data in a CLUBB-like fashion.
+    Wraps around SAM-LES results to project them onto CLUBB-like grids.
+
+    Combines a dataset with the LES results together with a pair of CLUBB-like
+    grids to provide an interface to interpolate LES predictions onto the
+    CLUBB representation.
 
     SAM in System for Atmospheric Modelling [http://rossby.msrc.sunysb.edu/SAM.html]
-
-    Since CLUBB is using a staggered grid, but the LES is not, some variables
-    must be represented in a different location (on an offset grid).
 
     CLUBB has two grids in a single column [https://arxiv.org/pdf/1711.03675v1#nameddest=url:clubb_grid]:
      - `zm`: Momentum grid
      - `zt`: Thermodynamic grid
+    variables can be represented  on either of them.
 
-    SAM variables exist in three flavours:
+    SAM variables in the dataset exist in three flavours:
       - Time invariant pressure profile (dims: ("z"))
       - Time-series scalars (dims: ("time"))
       - Variables (dims: ("time", "z", "y", "x"))
+
     Only datasets with degenerate y and x dimensions are supported.
     """
 
@@ -217,7 +220,14 @@ class SAMDataInterface:
 
     @property
     def sam_dataset(self) -> xr.Dataset:
-        """Get the underlying SAM dataset."""
+        """
+        Get the underlying SAM dataset.
+
+        Note
+        ----
+        Take care as the dataset is mutable. If assigned to a reference may
+        silently change the data wrapped in this interface.
+        """
         return self._sam_dataset
 
     @staticmethod
