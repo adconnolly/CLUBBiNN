@@ -83,7 +83,7 @@ class CLUBBGrids:
     zt_cell_edges: npt.NDArray[np.float64]
 
     def __post_init__(self) -> None:
-        """Make it really immutable."""
+        # Make it really immutable
         self.zm.setflags(write=False)
         self.zt.setflags(write=False)
         self.zm_cell_edges.setflags(write=False)
@@ -124,14 +124,14 @@ class CLUBBGrids:
 
         # Thermodynamic grid parameters
         zt = (zm[:-1] + zm[1:]) / 2
-        zt__cell_edges = zm
+        zt_cell_edges = zm
 
         # Define momentum grid cell edges
         top_zm_edge = zt[-1] + 2.0 * (zm[-1] - zt[-1])
         zm_cell_edges = np.concatenate([[zm[0]], zt, [top_zm_edge]])
 
         return cls(
-            zm=zm, zt=zt, zm_cell_edges=zm_cell_edges, zt_cell_edges=zt__cell_edges
+            zm=zm, zt=zt, zm_cell_edges=zm_cell_edges, zt_cell_edges=zt_cell_edges
         )
 
 
