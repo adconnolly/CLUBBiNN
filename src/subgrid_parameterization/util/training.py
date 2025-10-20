@@ -203,10 +203,10 @@ class SAMDataInterface:
         sam_z_edges = self.edges_from_midpoints(0.0, sam_z)
 
         # Store projection matrices from SAM grid to CLUBB grids
-        self._z_to_zm_matrix = self.create_interpolation_matrix(
+        self._z_to_zm_matrix = self.create_projection_matrix(
             grids.zm_cell_edges, sam_z_edges
         )
-        self._z_to_zt_matrix = self.create_interpolation_matrix(
+        self._z_to_zt_matrix = self.create_projection_matrix(
             grids.zt_cell_edges, sam_z_edges
         )
 
@@ -281,18 +281,15 @@ class SAMDataInterface:
         return edges
 
     @staticmethod
-    def create_interpolation_matrix(
+    def create_projection_matrix(
         to_grid: npt.NDArray[T_FLOAT], from_grid: npt.NDArray[T_FLOAT]
     ) -> scipy.sparse.csr_array:
         """
-        Create piece-wise constant interpolation matrix between two 1d grids.
+        Create a projection matrix between two piece-wise constant 1d grids.
 
         Data storage on both grids is assumed as average values of the variable
         at cell centres. Hence, since inputs are cell boundaries. The number of
         values stored on from_grid on len(from_grid) == N is N-1.
-
-        When calculating averaged values on the target grid, we also assume that
-        these are average values at cell centres.
 
         Parameters
         ----------
@@ -305,7 +302,7 @@ class SAMDataInterface:
         -------
         2D (N-1)x(M-1) scipy.sparse.csr_array
             Where `len(to_grid)` is N and `len(from_grid)` M
-            Interpolation matrix that maps values from the source grid to the target grid.
+            Projection matrix that maps values from the source grid to the target grid.
         """
 
         # Assert preconditions

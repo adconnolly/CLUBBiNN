@@ -228,8 +228,8 @@ class TestSAMDataInterface_midpoint_to_edges:
             )
 
 
-class TestSAMDataInterface_interpolation_matrix:
-    """Tests related to the SAMDataInterface.create_interpolation_matrix static method."""
+class TestSAMDataInterface_projection_matrix:
+    """Tests related to the SAMDataInterface.create_projection_matrix static method."""
 
     @pytest.mark.parametrize(
         "from_edges, to_edges",
@@ -246,16 +246,14 @@ class TestSAMDataInterface_interpolation_matrix:
             ),
         ],
     )
-    def test_interpolation_conservation(self, from_edges, to_edges):
-        """Test that interpolation conserves the total integral of values."""
+    def test_projection_conservation(self, from_edges, to_edges):
+        """Test that projection conserves the total integral of values."""
         # TODO: Discuss alternative, this numbers may change with numpy versions
         # (Numpy does not guarantee reproducibility I think)
         prng = np.random.default_rng(42)
         from_values = prng.random(len(from_edges) - 1)
 
-        matrix = train.SAMDataInterface.create_interpolation_matrix(
-            to_edges, from_edges
-        )
+        matrix = train.SAMDataInterface.create_projection_matrix(to_edges, from_edges)
         to_values = matrix @ from_values
 
         from_integral = np.sum(from_values * np.diff(from_edges))
@@ -263,7 +261,7 @@ class TestSAMDataInterface_interpolation_matrix:
 
         np.testing.assert_array_almost_equal_nulp(from_integral, to_integral, nulp=4)
 
-    def test_interpolation_matrix_to_single_interval(self):
+    def test_projection_matrix_to_single_interval(self):
         # Include a degenerate cell in source grid
         from_edges = np.array([0.0, 0.5, 2.0, 2.0, 3.0])
         to_edges = np.array([0.0, 3.0])
@@ -273,25 +271,21 @@ class TestSAMDataInterface_interpolation_matrix:
             np.diff(from_edges) / (to_edges[-1] - to_edges[0]), axis=0
         )
 
-        matrix = train.SAMDataInterface.create_interpolation_matrix(
-            to_edges, from_edges
-        )
+        matrix = train.SAMDataInterface.create_projection_matrix(to_edges, from_edges)
         # Numpy test assertions do not work with sparse arrays
         np.testing.assert_array_max_ulp(ref_values, matrix.todense(), maxulp=4)
 
-    def test_interpolation_matrix_to_degenerate_interval(self):
+    def test_projection_matrix_to_degenerate_interval(self):
         from_edges = np.array([0.0, 1.0, 2.0, 3.0])
         to_edges = np.array([1.5, 1.5])
 
         ref_values = np.array([[0.0, 0.0, 0.0]])
 
-        matrix = train.SAMDataInterface.create_interpolation_matrix(
-            to_edges, from_edges
-        )
+        matrix = train.SAMDataInterface.create_projection_matrix(to_edges, from_edges)
         # Numpy test assertions do not work with sparse arrays
         np.testing.assert_array_max_ulp(ref_values, matrix.todense(), maxulp=4)
 
-    def test_interpolation_matrix_staggered_grids(self):
+    def test_projection_matrix_staggered_grids(self):
         from_edges = np.array([0.0, 1.0, 2.0, 3.0])
         to_edges = np.array([0.5, 1.5, 2.5])
 
@@ -302,59 +296,55 @@ class TestSAMDataInterface_interpolation_matrix:
             ]
         )
 
-        matrix = train.SAMDataInterface.create_interpolation_matrix(
-            to_edges, from_edges
-        )
+        matrix = train.SAMDataInterface.create_projection_matrix(to_edges, from_edges)
         # Numpy test assertions do not work with sparse arrays
         np.testing.assert_array_max_ulp(ref_values, matrix.todense(), maxulp=4)
 
-    def test_interpolation_matrix_errors(self):
+    def test_projection_matrix_errors(self):
         from_grid = np.array([0.0, 1.0, 2.0, 3.0])
         to_grid = np.array([0.5, 1.5, 2.5])
 
         # to_grid not fully contained in from_grid
         with pytest.raises(ValueError):
             # Case below the minimum
-            train.SAMDataInterface.create_interpolation_matrix(
+            train.SAMDataInterface.create_projection_matrix(
                 np.array([-1.0, 1.5, 2.5]), from_grid
             )
         with pytest.raises(ValueError):
             # Case above the maximum
-            train.SAMDataInterface.create_interpolation_matrix(
+            train.SAMDataInterface.create_projection_matrix(
                 np.array([0.5, 1.5, 4.0]), from_grid
             )
 
         # Non-monotonic grids
         with pytest.raises(ValueError):
             # to_grid
-            train.SAMDataInterface.create_interpolation_matrix(
+            train.SAMDataInterface.create_projection_matrix(
                 np.array([0.5, 1.5, 1.0]), from_grid
             )
         with pytest.raises(ValueError):
             # from_grid
-            train.SAMDataInterface.create_interpolation_matrix(
+            train.SAMDataInterface.create_projection_matrix(
                 to_grid, np.array([0.0, 2.0, 1.0, 3.0])
             )
         with pytest.raises(ValueError):
             # to_grid with NaN (is not sorted)
-            train.SAMDataInterface.create_interpolation_matrix(
+            train.SAMDataInterface.create_projection_matrix(
                 np.array([0.5, np.nan, 2.5]), from_grid
             )
         with pytest.raises(ValueError):
             # from_grid with NaN (is not sorted)
-            train.SAMDataInterface.create_interpolation_matrix(
+            train.SAMDataInterface.create_projection_matrix(
                 to_grid, np.array([0.0, 1.0, np.nan, 3.0])
             )
 
         # Degenerate grids
         with pytest.raises(ValueError):
             # to_grid
-            train.SAMDataInterface.create_interpolation_matrix(
-                np.array([0.5]), from_grid
-            )
+            train.SAMDataInterface.create_projection_matrix(np.array([0.5]), from_grid)
         with pytest.raises(ValueError):
             # from_grid
-            train.SAMDataInterface.create_interpolation_matrix(to_grid, np.array([0.0]))
+            train.SAMDataInterface.create_projection_matrix(to_grid, np.array([0.0]))
 
 
 class TestCLUBBGrids:
