@@ -260,7 +260,7 @@ class SAMDataInterface:
         )
 
     @property
-    def grids(self) -> CLUBBGrids:
+    def clubb_grids(self) -> CLUBBGrids:
         """Get the CLUBB-like grids."""
         return self._grids
 

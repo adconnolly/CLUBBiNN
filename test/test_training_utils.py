@@ -88,8 +88,8 @@ class TestSAMDataInterface:
         # TODO: Figure out something more sensible
         sam_data = train.SAMDataInterface(bomex_dataset, clubb_like_grids)
 
-        sam_data.grids.zm
-        sam_data.grids.zt
+        sam_data.clubb_grids.zm
+        sam_data.clubb_grids.zt
         sam_data.sam_dataset
 
     @pytest.fixture
