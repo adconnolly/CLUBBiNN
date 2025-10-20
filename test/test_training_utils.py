@@ -8,7 +8,8 @@ import subgrid_parameterization.util.training as train
 
 @pytest.fixture
 def netcdf_files(tmp_path):
-    """Create a temporary NetCDF file to read during a test.
+    """
+    Create a temporary NetCDF file to read during a test.
 
     Provides two paths:
         - `path_with_suffix` that ends with '.nc'
@@ -45,7 +46,8 @@ def test_read_as_xarray(netcdf_files):
 
 @pytest.fixture
 def reference_z_grids(test_files_dir):
-    """Reference z-grids computed from BOMEX dataset for regression check.
+    """
+    Reference z-grids computed from BOMEX dataset for regression check.
 
     Obtained using the previous version of the pre-processing code.
 
@@ -110,7 +112,8 @@ class TestSAMDataInterface:
 
     @pytest.mark.parametrize("var_name", ["U", "V"])
     def test_projection(self, data_with_coarsened_clubb_grid, var_name):
-        """Use coarsen SAM grid as a target.
+        """
+        Use coarsen SAM grid as a target.
 
         Basically we don't need to test that the projection matrix is correct
         since it is the role of other tests. Here we just want to assert that
@@ -141,7 +144,7 @@ class TestSAMDataInterface:
         np.testing.assert_array_almost_equal_nulp(var_zt, var_zt_ref, nulp=4)
 
     def test_projection_pressure(self, data_with_coarsened_clubb_grid):
-        """ "
+        """
         See `test_projection` for details.
 
         Pressure has it own dedicated method but logic is the same.

@@ -16,7 +16,8 @@ T_FLOAT = typing.TypeVar("T_FLOAT", bound=np.floating)
 
 
 def read_as_xarray(path: Path | str) -> xr.Dataset:
-    """Read a netCDF datafile as an xarray Dataset.
+    """
+    Read a netCDF datafile as an xarray Dataset.
 
     Parameters
     ----------
@@ -135,7 +136,8 @@ class CLUBBGrids:
 
 
 class SAMDataInterface:
-    """Wraps around SAM-LES results to expose data in a CLUBB-like fashion.
+    """
+    Wraps around SAM-LES results to expose data in a CLUBB-like fashion.
 
     SAM in System for Atmospheric Modelling [http://rossby.msrc.sunysb.edu/SAM.html]
 
@@ -161,7 +163,8 @@ class SAMDataInterface:
     _z_to_zt_matrix: scipy.sparse.csr_array
 
     def __init__(self, sam_dataset: xr.Dataset, grids: CLUBBGrids) -> None:
-        """Initialize the data interface.
+        """
+        Initialize the data interface.
 
         Parameters
         ----------
@@ -281,7 +284,8 @@ class SAMDataInterface:
     def create_interpolation_matrix(
         to_grid: npt.NDArray[T_FLOAT], from_grid: npt.NDArray[T_FLOAT]
     ) -> scipy.sparse.csr_array:
-        """Create piece-wise constant interpolation matrix between two 1d grids.
+        """
+        Create piece-wise constant interpolation matrix between two 1d grids.
 
         Data storage on both grids is assumed as average values of the variable
         at cell centres. Hence, since inputs are cell boundaries. The number of
@@ -362,7 +366,8 @@ class SAMDataInterface:
     def get_sam_variable_on_clubb_grid(
         self, varname: str, grid_type: str
     ) -> npt.NDArray[np.float64]:
-        """Get a SAM result variable projected to the CLUBB grid.
+        """
+        Get a SAM result variable projected to the CLUBB grid.
 
         Parameters
         ----------
@@ -398,7 +403,8 @@ class SAMDataInterface:
         return sam_var @ matrix.T
 
     def get_sam_pressure_on_clubb_grid(self, grid_type: str) -> npt.NDArray[np.float64]:
-        """Get the SAM pressure variable projected to the CLUBB grid.
+        """
+        Get the SAM pressure variable projected to the CLUBB grid.
 
         Parameters
         ----------
