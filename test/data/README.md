@@ -8,3 +8,9 @@
   `compute_mixing_length` in CLUBB (obtained by logging inputs and outputs
   during standalone calculation). Used to check that the Python reimplementation
   of the same function is equivalent.
+- `reference_SAM_z_grid.csv`: Values of the vertical grid obtained from the
+   BOMEX dataset before refactoring.
+- `reference_CLUBB_zt_grid.csv`: Values of the CLUBB zt grid obtained from
+   SAM z grid of BOMEX dataset before refactoring.
+- `reference_CLUBB_zm_grid.csv`: Values of the CLUBB zm grid obtained from
+   SAM z grid of BOMEX dataset before refactoring.
