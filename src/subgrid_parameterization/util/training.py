@@ -155,8 +155,8 @@ class SAMDataInterface:
     Only datasets with degenerate y and x dimensions are supported.
     i.e. single atmospheric columns.
 
-    Example
-    -------
+    Examples
+    --------
 
     To project the SAM LES data to the CLUBB grid we need to construct
     the `SAMDataInterface` by providing it the `xarray.Dataset` with the
@@ -170,8 +170,8 @@ class SAMDataInterface:
 
         sam_dataset = xr.open_dataset("LES_results.nc")
 
-        # We need some momentum grid that
-        # We can obtain it by coarsening the SAM z grid
+        # We need some momentum grid
+        # We can obtain one by, e.g., coarsening the SAM z grid
         z_sam = np.asarray(sam_dataset["z"].values, dtype=np.float64)
         zm_clubb = np.concatenate(([0.0], 0.5 * (z_sam[1:-1:2] + z_sam[2::2])))
         grids = train.CLUBBGrids.from_momentum_grid(zm_clubb)
@@ -381,7 +381,7 @@ class SAMDataInterface:
             )
 
         # Note that the comparison here is not arbitrary
-        # We want to make sure that the grid in not judged sorted if it contains NaN
+        # We want to make sure that the grid is not judged sorted if it contains NaN
         # (which is correct, since NaNs are not ordered)
         if not np.all(to_grid[1:] >= to_grid[:-1]):
             raise ValueError("'to_grid' must be sorted in ascending order.")
@@ -390,13 +390,13 @@ class SAMDataInterface:
 
         # Build the sparse matrix row by row
         # We use LIL for building since it is more efficient to modify
-        # When the array is build, we switch to CSR to have faster matrix-vector product
+        # When the array is built, we switch to CSR to have faster matrix-vector product
         # operations
         matrix = scipy.sparse.lil_array(
             (len(to_grid) - 1, len(from_grid) - 1), dtype=to_grid.dtype
         )
         for i_col in range(len(to_grid) - 1):
-            # Find index of upper and lowe bounds for non-zero elements of the matrix
+            # Find index of upper and lower bounds for non-zero elements of the matrix
             y_b, y_t = to_grid[i_col : i_col + 2]
 
             if y_b == y_t:

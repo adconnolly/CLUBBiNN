@@ -8,7 +8,7 @@
   `compute_mixing_length` in CLUBB (obtained by logging inputs and outputs
   during standalone calculation). Used to check that the Python reimplementation
   of the same function is equivalent.
-- `reference_CLUBB_zt_grid.csv`: Values of the thermodynamic CLUBB grid build 
+- `reference_CLUBB_zt_grid.csv`: Values of the thermodynamic CLUBB grid built
   by coarsening BOMEX LES results. Used in a regression test to check if grid 
   construction matches what was done initially 
 - `reference_CLUBB_zm_grid.csv`: Values of the CLUBB momentum grid that match 

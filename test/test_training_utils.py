@@ -97,7 +97,7 @@ class TestSAMDataInterface:
         """
         Uses coarsened SAM grid as CLUBB grids.
 
-        The CLUBB momentum grid is build by combining two SAM cells into one
+        The CLUBB momentum grid is built by combining two SAM cells into one
         except for the first cell that corresponds to a single SAM cell.
         """
         z_sam = np.asarray(bomex_dataset["z"], dtype=np.float64)
@@ -246,8 +246,6 @@ class TestSAMDataInterface_projection_matrix:
     )
     def test_projection_conservation(self, from_edges, to_edges):
         """Test that projection conserves the total integral of values."""
-        # TODO: Discuss alternative, this numbers may change with numpy versions
-        # (Numpy does not guarantee reproducibility I think)
         prng = np.random.default_rng(42)
         from_values = prng.random(len(from_edges) - 1)
 
