@@ -40,7 +40,7 @@ def read_as_xarray(path: Path | str) -> xr.Dataset:
             f"File does not have '.nc' suffix, but {path.suffix}. Are you sure it is a NetCDF file?"
         )
 
-    return xr.open_dataset(path)
+    return xr.load_dataset(path)
 
 
 @dataclass(frozen=True)
