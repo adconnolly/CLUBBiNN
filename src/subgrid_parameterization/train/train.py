@@ -82,6 +82,8 @@ class Trainer:
         # Set up early stopper for training
         early_stopper = EarlyStopper(patience=self.config["patience"], min_delta=0)
 
+        # Set up loss criterion
+        criterion = torch.nn.MSELoss()
         lossmin = np.inf
 
         for epoch in range(self.config["epochs"]):
@@ -132,7 +134,8 @@ class Trainer:
                 break
             if valid_running_loss < lossmin:
                 lossmin = valid_running_loss
-                torch.save(model.state_dict(), savename + ".pt")
+                torch.save(model.state_dict(), save_name + "_net.pt")
+                torch.save(optimizer.state_dict(), save_name + "_optim.pt")
 
             # Push loss values for each epoch to wandb
             log_dic = {}
@@ -155,7 +158,7 @@ class Trainer:
         # Load the best performing (lowest loss) model and return
         # TODO: are we happy with this approach?
         model.load_state_dict(
-            torch.load(save_name + ".pt", weights_only=True)
+            torch.load(save_name + "_net.pt", weights_only=True)
         )  # ,map_location=device),strict=False)
 
         return model
