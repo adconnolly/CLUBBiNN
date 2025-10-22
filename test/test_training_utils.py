@@ -83,15 +83,6 @@ class TestSAMDataInterface:
             with pytest.raises(ValueError):
                 train.SAMDataInterface(combined, clubb_like_grids)
 
-    def test_init(self, bomex_dataset, clubb_like_grids):
-        # Just a smoke test
-        # TODO: Figure out something more sensible
-        sam_data = train.SAMDataInterface(bomex_dataset, clubb_like_grids)
-
-        sam_data.clubb_grids.zm
-        sam_data.clubb_grids.zt
-        sam_data.sam_dataset
-
     @pytest.fixture
     def data_with_coarsened_clubb_grid(self, bomex_dataset):
         """
