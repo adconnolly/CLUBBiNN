@@ -1,5 +1,6 @@
 """Training utilities for use in code."""
 
+import warnings
 import numpy as np
 import torch
 
@@ -40,6 +41,9 @@ class Trainer:
         self.test_loss = []
         self.device = device
         self.lossweights = torch.from_numpy(lossweights).to(self.device)
+
+        if len(self.lossweights.shape) != 1:
+            raise RuntimeError("lossweights must be a 1D array")
 
     def train_loop(
         self,
@@ -155,6 +159,12 @@ class Trainer:
                     f"{log_dic['valid_loss']:.3e}"
                 )
 
+        # If no training occurred, save initial model so load does not fail
+        if self.config["epochs"] == 0:
+            warnings.warn(
+                "Trainer.train_loop: No training occurred (epochs=0). Saving initial model state."
+            )
+            torch.save(model.state_dict(), save_name + "_net.pt")
         # Load the best performing (lowest loss) model and return
         # TODO: are we happy with this approach?
         model.load_state_dict(
