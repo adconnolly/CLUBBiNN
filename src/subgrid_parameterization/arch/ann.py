@@ -104,8 +104,7 @@ class Clipped_ANN(torch.nn.Module):
         # Bundle into Sequential for forward pass
         self.ops = torch.nn.Sequential(*ops)
 
-        self.min = clamping_range[0]
-        self.max = clamping_range[1]
+        self.min, self.max = clamping_range
 
     def forward(self, x):
         """Execute the forward method pasisng tensor through self.ops()."""
