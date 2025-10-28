@@ -12,6 +12,8 @@ from dataclasses import dataclass
 
 import scipy.sparse
 
+from subgrid_parameterization.preprocess import mixing_length as mixing
+
 T_FLOAT = typing.TypeVar("T_FLOAT", bound=np.floating)
 
 
@@ -483,3 +485,114 @@ class SAMDataInterface:
         sam_p = np.asarray(self._sam_dataset["p"].values, dtype=np.float64)
 
         return matrix @ sam_p
+
+    def get_mixing_length(
+        self,
+    ) -> tuple[
+        npt.NDArray[np.float64], npt.NDArray[np.float64], npt.NDArray[np.float64]
+    ]:
+        """
+        Compute the CLUBB-like mixing lengths from the SAM data.
+
+        Returns
+        -------
+        numpy.ndarray[np.float64]
+            Combined CLUBB mixing length scale.
+        numpy.ndarray[np.float64]
+            Upward mixing length scale.
+        numpy.ndarray[np.float64]
+            Downward mixing length scale.
+        """
+        thvm = self.get_sam_variable_on_clubb_grid("THETAV", "zt")
+        thlm = self.get_sam_variable_on_clubb_grid("THETAL", "zt")
+        rtm = self.get_sam_variable_on_clubb_grid("RTM", "zt")
+
+        u2 = self.get_sam_variable_on_clubb_grid("U2", "zm")
+        v2 = self.get_sam_variable_on_clubb_grid("V2", "zm")
+        w2 = self.get_sam_variable_on_clubb_grid("W2", "zm")
+        em = 0.5 * (u2 + v2 + w2)
+
+        ngrdcol = u2.shape[0]
+
+        # TODO: Discuss and include more context in the doc
+        #  basically to avoid the magic number if possible
+        l_scale_max = (
+            0.25 * 64 * 100
+        )  # 64 pts * 100 m dx_LES = dx_GCM, CLUBB takes 1/4 this for max when implemented
+
+        p_in_Pa = np.broadcast_to(
+            self.get_sam_pressure_on_clubb_grid("zt") * 100.0, thvm.shape
+        )  # hPa -> Pa
+
+        CP = 1004.0  # Specific heat capacity of air at constant pressure
+        RD = 287.0  # Gas constant for dry air
+        exner = (p_in_Pa / 10**5) ** (RD / CP)
+
+        thv_ds = self.get_sam_variable_on_clubb_grid("THETA", "zt") * (1 + 0.608 * rtm)
+        mu = np.full(ngrdcol, 1.0e-3)
+
+        L_MIN = 20.0
+        saturation_formula = mixing.SaturationFormula.BOLTON
+        L_IMPLEMENTED = True
+
+        return mixing.compute_mixing_length(
+            len(self.clubb_grids.zm),
+            len(self.clubb_grids.zt),
+            ngrdcol,
+            np.broadcast_to(self.clubb_grids.zm, u2.shape),
+            np.broadcast_to(self.clubb_grids.zt, thvm.shape),
+            np.broadcast_to(np.diff(self.clubb_grids.zm_cell_edges), u2.shape),
+            np.broadcast_to(np.diff(self.clubb_grids.zt_cell_edges), thvm.shape),
+            np.broadcast_to(1.0 / np.diff(self.clubb_grids.zm_cell_edges), u2.shape),
+            np.broadcast_to(1.0 / np.diff(self.clubb_grids.zt_cell_edges), thvm.shape),
+            thvm,
+            thlm,
+            rtm,
+            em,
+            l_scale_max,
+            p_in_Pa,
+            exner,
+            thv_ds,
+            mu,
+            L_MIN,
+            saturation_formula,
+            L_IMPLEMENTED,
+        )
+
+    def get_C14(self) -> npt.NDArray[np.float64]:
+        """
+        Compute the C14 parameter from the SAM dataset projected onto the CLUBB thermodynamic grid.
+
+        Returns
+        -------
+        numpy.ndarray[np.float64]
+            C14 parameter on the CLUBB thermodynamic grid.
+        """
+        # Need to provide this one
+        # L = self.get_sam_variable_on_clubb_grid("mixing_length", "zt")
+        mixing_length, _, _ = self.get_mixing_length()
+
+        u2 = self.get_sam_variable_on_clubb_grid("U2", "zt")
+        v2 = self.get_sam_variable_on_clubb_grid("V2", "zt")
+        w2 = self.get_sam_variable_on_clubb_grid("W2", "zt")
+        e = 0.5 * (u2 + v2 + w2)
+
+        u2DFSN = self.get_sam_variable_on_clubb_grid("U2DFSN", "zt")
+        v2DFSN = self.get_sam_variable_on_clubb_grid("V2DFSN", "zt")
+        disp = 0.5 * (u2DFSN + v2DFSN)
+
+        return -3.0 / 2.0 * mixing_length / e**1.5 * disp
+
+    def get_disp(self) -> npt.NDArray[np.float64]:
+        """
+        Compute the dispersion from the SAM dataset on the CLUBB thermodynamic grid.
+
+        Returns
+        -------
+        numpy.ndarray[np.float64]
+            Dispersion parameter on the CLUBB thermodynamic grid.
+        """
+        u2DFSN = self.get_sam_variable_on_clubb_grid("U2DFSN", "zt")
+        v2DFSN = self.get_sam_variable_on_clubb_grid("V2DFSN", "zt")
+        disp = 0.5 * (u2DFSN + v2DFSN)
+        return disp
