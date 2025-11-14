@@ -43,7 +43,9 @@ def trainer_setup():
     lossweights = np.ones(2)
     trainer = Trainer(config, device, lossweights)
 
-    model = DummyModel(4, 2)
+    in_dim = 4
+    out_dim = 2
+    model = DummyModel(in_dim, out_dim)
     optimizer = torch.optim.Adam(
         model.parameters(), lr=config["lr"], weight_decay=config["wd"]
     )
