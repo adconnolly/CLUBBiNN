@@ -160,13 +160,12 @@ class Trainer:
                 )
 
         # If no training occurred, save initial model so load does not fail
-        if self.config["epochs"] == 0:
+        if self.config["epochs"] <= 0:
             warnings.warn(
                 "Trainer.train_loop: No training occurred (epochs=0). Saving initial model state."
             )
             torch.save(model.state_dict(), save_name + "_net.pt")
         # Load the best performing (lowest loss) model and return
-        # TODO: are we happy with this approach?
         model.load_state_dict(
             torch.load(save_name + "_net.pt", weights_only=True)
         )  # ,map_location=device),strict=False)

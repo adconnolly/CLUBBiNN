@@ -17,7 +17,7 @@ class TestANN:
         x = torch.randn(10, N[0])
         out = model(x)
 
-        torch.testing.assert_close(torch.tensor(out.shape), torch.tensor([10, N[-1]]))
+        assert out.shape == (10, N[-1])
         assert isinstance(out, torch.Tensor)
 
     def test_clipped_ann_default_range(self):
@@ -30,15 +30,20 @@ class TestANN:
         torch.testing.assert_close(out, out.clamp(0, 2))
 
     def test_clipped_ann_forward(self):
-        """Test Clipped_ANN forward pass clamps output within specified range."""
+        """
+        Test Clipped_ANN forward pass clamps output within specified range.
+
+        Could be improved to verify that the clamping is active in the net
+        rather that assuming.
+        """
         N = [4, 16, 8, 2]
         clamp_range = [0.0, 1.0]
         model = Clipped_ANN(N, clamping_range=clamp_range)
-        x = torch.randn(10, N[0]) * 10  # Some values outside clamp range
+        x = torch.randn(10, N[0]) * 10
         out = model(x)
 
-        torch.testing.assert_close(torch.tensor(out.shape), torch.tensor([10, N[-1]]))
-        torch.testing.assert_close(out, out.clamp(clamp_range[0], clamp_range[1]))
+        assert out.shape == (10, N[-1])
+        torch.testing.assert_close(out, out.clamp(*clamp_range))
 
     def test_ann_linear_last_layer(self):
         """Test ANN last layer is Linear (no activation applied)."""

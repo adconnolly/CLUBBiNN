@@ -74,13 +74,24 @@ def trainer_setup():
 class TestEarlyStopper:
     """Tests for EarlyStopper early stopping logic."""
 
-    def test_early_stop(self):
+    @pytest.mark.parametrize(
+        "losses,patience,min_delta,should_stop",
+        [
+            # patience=2, min_delta=0.1
+            ([1.0, 0.9, 1.01, 1.0, 1.1], 2, 0.1, True),  # Should stop at last
+            ([1.0, 0.9, 1.01, 1.0, 1.1], 3, 0.1, False),  # Longer patience
+            ([1.0, 0.9, 1.01, 1.0, 1.1], 2, 0.2, False),  # Larger delta
+            ([1.0, 0.95, 0.94, 0.93], 2, 0.01, False),  # Always improving
+            ([1.0, 1.0, 1.0, 1.0], 2, 0.0, False),  # No improvement never stops
+            ([1.0, 0.9, 1.01, 1.0, 0.8, 1.1, 0.85], 2, 0.1, False),  # stopper reset
+        ],
+    )
+    def test_early_stop(self, losses, patience, min_delta, should_stop):
         """Test EarlyStopper triggers after patience exceeded."""
-        stopper = EarlyStopper(patience=2, min_delta=0.1)
-        losses = [1.0, 0.9, 1.01, 1.0, 1.1]  # All after 0.9 are > 0.9 + 0.1
+        stopper = EarlyStopper(patience=patience, min_delta=min_delta)
         stops = [stopper.early_stop(loss) for loss in losses]
-        assert all(s is False for s in stops[:-1])
-        assert stops[-1] is True
+        assert all(s is False for s in stops[:-1]) if not should_stop else True
+        assert stops[-1] is should_stop
 
 
 class TestTrainer:

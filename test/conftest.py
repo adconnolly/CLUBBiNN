@@ -7,10 +7,22 @@ be defined here. See:
 https://docs.pytest.org/en/stable/reference/fixtures.html#conftest-py-sharing-fixtures-across-multiple-files)
 """
 
+from pathlib import Path
+
+import numpy as np
 import pytest
+import torch
 import xarray as xr
 
-from pathlib import Path
+
+@pytest.fixture(autouse=True)
+def fix_torch_randn():
+    """Fixture to fix the random seeds for reproducibility."""
+    seed = 7
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
 
 
 @pytest.fixture(scope="session")
