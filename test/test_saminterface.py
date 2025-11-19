@@ -3,7 +3,7 @@ import pytest
 import xarray as xr
 import numpy as np
 
-import subgrid_parameterization.util.training as train
+import subgrid_parameterization.preprocess.saminterface as sam
 
 
 @pytest.fixture
@@ -35,13 +35,13 @@ def test_read_as_xarray(netcdf_files):
     path_suffix, path_no_suffix = netcdf_files
 
     with pytest.raises(FileNotFoundError):
-        train.read_as_xarray("Random/Path")
+        sam.read_as_xarray("Random/Path")
     with pytest.raises(ValueError):
-        train.read_as_xarray(path_suffix.parent)
+        sam.read_as_xarray(path_suffix.parent)
     with pytest.warns(UserWarning):
-        train.read_as_xarray(path_no_suffix)
+        sam.read_as_xarray(path_no_suffix)
 
-    assert isinstance(train.read_as_xarray(path_suffix), xr.Dataset)
+    assert isinstance(sam.read_as_xarray(path_suffix), xr.Dataset)
 
 
 @pytest.fixture
@@ -60,7 +60,7 @@ def reference_z_grids(test_files_dir):
 def clubb_like_grids():
     """Provides a CLUBB-like grid for testing."""
     zm = np.linspace(0.0, 1000.0, 51)
-    return train.CLUBBGrids.from_momentum_grid(zm)
+    return sam.CLUBBGrids.from_momentum_grid(zm)
 
 
 class TestSAMDataInterface:
@@ -71,7 +71,7 @@ class TestSAMDataInterface:
         coords_to_remove = ["y", "x", "z", "time"]
         for coord in coords_to_remove:
             with pytest.raises(ValueError):
-                train.SAMDataInterface(ds.drop_vars(coord), clubb_like_grids)
+                sam.SAMDataInterface(ds.drop_vars(coord), clubb_like_grids)
 
         # Non-degenerate y or x dimensions
         for dim in ["y", "x"]:
@@ -81,7 +81,7 @@ class TestSAMDataInterface:
             combined = xr.concat([ds, temp], dim=dim, data_vars="minimal")
 
             with pytest.raises(ValueError):
-                train.SAMDataInterface(combined, clubb_like_grids)
+                sam.SAMDataInterface(combined, clubb_like_grids)
 
     @pytest.fixture
     def data_with_coarsened_clubb_grid(self, bomex_dataset):
@@ -96,8 +96,8 @@ class TestSAMDataInterface:
         zm = np.concatenate(
             ([0], 0.5 * (z_sam[1 : 2 * nzm - 1 : 2] + z_sam[2 : 2 * nzm - 1 : 2]))
         )
-        grids = train.CLUBBGrids.from_momentum_grid(zm)
-        return train.SAMDataInterface(bomex_dataset, grids)
+        grids = sam.CLUBBGrids.from_momentum_grid(zm)
+        return sam.SAMDataInterface(bomex_dataset, grids)
 
     @pytest.mark.parametrize("var_name", ["U", "V"])
     def test_projection(self, data_with_coarsened_clubb_grid, var_name):
@@ -189,9 +189,7 @@ class TestSAMDataInterface_midpoint_to_edges:
             )
         )
         mid_points = 0.5 * (edges[:-1] + edges[1:])
-        edges_reconstructed = train.SAMDataInterface.edges_from_midpoints(
-            0.0, mid_points
-        )
+        edges_reconstructed = sam.SAMDataInterface.edges_from_midpoints(0.0, mid_points)
 
         assert edges_reconstructed.dtype == dtype
         np.testing.assert_array_almost_equal_nulp(edges, edges_reconstructed, nulp=4)
@@ -200,19 +198,19 @@ class TestSAMDataInterface_midpoint_to_edges:
         """Test that invalid inputs are rejected."""
         # At least one mid-point is required
         with pytest.raises(ValueError):
-            train.SAMDataInterface.edges_from_midpoints(
+            sam.SAMDataInterface.edges_from_midpoints(
                 0.0, np.array([], dtype=np.float64)
             )
 
         # Inconsistent starting edge
         with pytest.raises(ValueError):
-            train.SAMDataInterface.edges_from_midpoints(
+            sam.SAMDataInterface.edges_from_midpoints(
                 0.0, np.array([1.0, 1.9], dtype=np.float64)
             )
 
         # Non-monotonic mid-point values
         with pytest.raises(ValueError):
-            train.SAMDataInterface.edges_from_midpoints(
+            sam.SAMDataInterface.edges_from_midpoints(
                 0.0, np.array([1.0, 2.0, 1.5], dtype=np.float64)
             )
 
@@ -240,7 +238,7 @@ class TestSAMDataInterface_projection_matrix:
         prng = np.random.default_rng(42)
         from_values = prng.random(len(from_edges) - 1)
 
-        matrix = train.SAMDataInterface.create_projection_matrix(to_edges, from_edges)
+        matrix = sam.SAMDataInterface.create_projection_matrix(to_edges, from_edges)
         to_values = matrix @ from_values
 
         from_integral = np.sum(from_values * np.diff(from_edges))
@@ -258,7 +256,7 @@ class TestSAMDataInterface_projection_matrix:
             np.diff(from_edges) / (to_edges[-1] - to_edges[0]), axis=0
         )
 
-        matrix = train.SAMDataInterface.create_projection_matrix(to_edges, from_edges)
+        matrix = sam.SAMDataInterface.create_projection_matrix(to_edges, from_edges)
         # Numpy test assertions do not work with sparse arrays
         np.testing.assert_array_max_ulp(ref_values, matrix.todense(), maxulp=4)
 
@@ -268,7 +266,7 @@ class TestSAMDataInterface_projection_matrix:
 
         ref_values = np.array([[0.0, 0.0, 0.0]])
 
-        matrix = train.SAMDataInterface.create_projection_matrix(to_edges, from_edges)
+        matrix = sam.SAMDataInterface.create_projection_matrix(to_edges, from_edges)
         # Numpy test assertions do not work with sparse arrays
         np.testing.assert_array_max_ulp(ref_values, matrix.todense(), maxulp=4)
 
@@ -283,7 +281,7 @@ class TestSAMDataInterface_projection_matrix:
             ]
         )
 
-        matrix = train.SAMDataInterface.create_projection_matrix(to_edges, from_edges)
+        matrix = sam.SAMDataInterface.create_projection_matrix(to_edges, from_edges)
         # Numpy test assertions do not work with sparse arrays
         np.testing.assert_array_max_ulp(ref_values, matrix.todense(), maxulp=4)
 
@@ -294,44 +292,44 @@ class TestSAMDataInterface_projection_matrix:
         # to_grid not fully contained in from_grid
         with pytest.raises(ValueError):
             # Case below the minimum
-            train.SAMDataInterface.create_projection_matrix(
+            sam.SAMDataInterface.create_projection_matrix(
                 np.array([-1.0, 1.5, 2.5]), from_grid
             )
         with pytest.raises(ValueError):
             # Case above the maximum
-            train.SAMDataInterface.create_projection_matrix(
+            sam.SAMDataInterface.create_projection_matrix(
                 np.array([0.5, 1.5, 4.0]), from_grid
             )
 
         # Non-monotonic grids
         with pytest.raises(ValueError):
             # to_grid
-            train.SAMDataInterface.create_projection_matrix(
+            sam.SAMDataInterface.create_projection_matrix(
                 np.array([0.5, 1.5, 1.0]), from_grid
             )
         with pytest.raises(ValueError):
             # from_grid
-            train.SAMDataInterface.create_projection_matrix(
+            sam.SAMDataInterface.create_projection_matrix(
                 to_grid, np.array([0.0, 2.0, 1.0, 3.0])
             )
         with pytest.raises(ValueError):
             # to_grid with NaN (is not sorted)
-            train.SAMDataInterface.create_projection_matrix(
+            sam.SAMDataInterface.create_projection_matrix(
                 np.array([0.5, np.nan, 2.5]), from_grid
             )
         with pytest.raises(ValueError):
             # from_grid with NaN (is not sorted)
-            train.SAMDataInterface.create_projection_matrix(
+            sam.SAMDataInterface.create_projection_matrix(
                 to_grid, np.array([0.0, 1.0, np.nan, 3.0])
             )
 
         # Degenerate grids
         with pytest.raises(ValueError):
             # to_grid
-            train.SAMDataInterface.create_projection_matrix(np.array([0.5]), from_grid)
+            sam.SAMDataInterface.create_projection_matrix(np.array([0.5]), from_grid)
         with pytest.raises(ValueError):
             # from_grid
-            train.SAMDataInterface.create_projection_matrix(to_grid, np.array([0.0]))
+            sam.SAMDataInterface.create_projection_matrix(to_grid, np.array([0.0]))
 
 
 class TestCLUBBGrids:
@@ -339,7 +337,7 @@ class TestCLUBBGrids:
 
     def test_from_momentum_grid(self):
         zm = np.array([0.0, 1.0, 2.2, 3.0])
-        grids = train.CLUBBGrids.from_momentum_grid(zm)
+        grids = sam.CLUBBGrids.from_momentum_grid(zm)
 
         def do_verification(grids, zm):
             zt_expected = np.array([0.5, 1.6, 2.6])
@@ -375,21 +373,21 @@ class TestCLUBBGrids:
         # Need at least two momentum levels to define thermodynamic levels
         zm = np.array([0.0])
         with pytest.raises(ValueError):
-            train.CLUBBGrids.from_momentum_grid(zm)
+            sam.CLUBBGrids.from_momentum_grid(zm)
 
         # Non-monotonic grid
         zm = np.array([0.0, 2.0, 1.0])
         with pytest.raises(ValueError):
-            train.CLUBBGrids.from_momentum_grid(zm)
+            sam.CLUBBGrids.from_momentum_grid(zm)
 
         # Grid with NaN
         zm = np.array([0.0, np.nan, 2.0])
         with pytest.raises(ValueError):
-            train.CLUBBGrids.from_momentum_grid(zm)
+            sam.CLUBBGrids.from_momentum_grid(zm)
 
     def test_regression_from_momentum_grid(self, reference_z_grids):
         zm_ref, zt_ref = reference_z_grids
 
-        grids = train.CLUBBGrids.from_momentum_grid(zm_ref)
+        grids = sam.CLUBBGrids.from_momentum_grid(zm_ref)
         np.testing.assert_array_equal(grids.zm, zm_ref)
         np.testing.assert_array_equal(grids.zt, zt_ref)
