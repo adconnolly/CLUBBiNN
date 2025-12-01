@@ -1,13 +1,19 @@
-"""Unit tests for EarlyStopper and Trainer classes using pytest."""
+"""
+Unit tests training module utilities.
+
+Test EarlyStopper and Trainer classes and saving functionality using pytest.
+"""
 
 import os
 import tempfile
+import json
 
 import numpy as np
 import pytest
 import torch
 
 from subgrid_parameterization.train.train import EarlyStopper, Trainer
+from subgrid_parameterization.train.save import save_model, get_git_info
 
 
 class DummyDataset(torch.utils.data.Dataset):
@@ -153,3 +159,59 @@ class TestTrainer:
 
         with pytest.raises(RuntimeError, match="lossweights must be a 1D array"):
             Trainer(config, device, lossweights)
+
+
+class TestSave:
+    """Tests for code to save TorchScript models."""
+
+    def test_get_git_info(self):
+        """Tests we can get info - running inside repo so should return git data."""
+        info = get_git_info()
+        assert isinstance(info, dict)
+        assert "branch" in info
+        assert "commit" in info
+
+    def test_save_model(self):
+        model = DummyModel(2, 1)
+        input_example = torch.randn(3, 2)
+        input_vars = [{"name": "x1", "units": "none"}, {"name": "x2", "units": "none"}]
+        output_vars = [{"name": "y", "units": "none"}]
+        metrics = {"loss": 0.1, "R2": 0.9}
+        train_config = {"epochs": 1}
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            filename = "test_model"
+            save_model(
+                model,
+                save_dir=tmpdir,
+                filename=filename,
+                input_example=input_example,
+                input_vars=input_vars,
+                output_vars=output_vars,
+                metrics=metrics,
+                train_config=train_config,
+            )
+            pt_path = os.path.join(tmpdir, f"{filename}.pt")
+            meta_path = os.path.join(tmpdir, f"{filename}_metadata.json")
+
+            # Check files were generated
+            assert os.path.isfile(pt_path)
+            assert os.path.isfile(meta_path)
+
+            # Check model can be loaded from file and run with expected input shape to
+            # generate expected output shape.
+            model = torch.jit.load(pt_path)
+            model.eval()
+            input_tensor = torch.ones(3, 2)
+            with torch.no_grad():
+                output = model(input_tensor)
+            assert output.shape == (3, 1)
+
+            # Check metadata in json file is correct
+            with open(meta_path, "r") as f:
+                meta = json.load(f)
+            assert meta["model_class"] == "DummyModel"
+            assert meta["input_vars"] == input_vars
+            assert meta["output_vars"] == output_vars
+            assert meta["metrics"] == metrics
+            assert meta["config"] == train_config
