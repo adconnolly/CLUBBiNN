@@ -5,9 +5,9 @@ build-backend = "hatchling.build"
 [project]
 name = "subgrid_parameterization"
 version = "0.0.1"
-description = "ML optimisation framework for subgrid forcing"
+description = "Machine learning optimization framework for subgrid forcing"
 authors = [
-    {name = "Alexander Connolly"}
+    {name = "Alex Connolly"}
 ]
 readme = "README.md"
 license-files = ["LICENSE"]
