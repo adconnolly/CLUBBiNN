@@ -1,15 +1,14 @@
 # CLUBBiNN: subgrid parameterization
 
-CLUBBiNN (Cloud Layers Unified By Binormals and Neural Networks) is a machine learning (ML) extension of Cloud Layers Unified By Binormals (CLUBB) that allows specification of select terms by a Neural Network (NN).
+CLUBBiNN (Cloud Layers Unified By Binormals and Neural Networks) is a machine learning extension of Cloud Layers Unified By Binormals (CLUBB) that allows specification of select terms by a Neural Network (NN).
 
 CLUBB is a boundary-layer cloud parameterization scheme
 principally developed by the research group of Vince Larson and subject to the copyright detailed in
 [`LICENSE_CLUBB`](https://github.com/adconnolly/CLUBBED/blob/main/LICENSE_CLUBB).
 The source code for the latest release can be found at [github/larson-group/clubb_release](https://github.com/larson-group/clubb_release).
 
-This repository contains a Python package (`subgrid_parameterization`) of code used in developing
-the CLUBBiNN extension to CLUBB.
-It also contains a number of notebooks used in data analysis and training of the schemes.
+This CLUBBiNN repository contains a Python package (`subgrid_parameterization`) of code used in developing the machine learning extension to CLUBB.
+It also contains a number of notebooks used in the analysis of the high-resolution large-eddy simulations (LESs) on which the development of the subgrid parameterizations are based, and notebooks for the training of new NN parameterizations.
 
 
 ## subgrid_parameterization
@@ -47,16 +46,16 @@ pip install -e .[all]
 The repository contains several notebooks used for analysis and training in
 respective directories.
 
-The analysis notebooks use processed Large-Eddy Simulation (LES) data, e.g. of the BOMEX
+The analysis notebooks present processed high-resolution LES data, e.g. of the BOMEX
 and DYCOMS cases including turbulence statistics such as Turbulent Kinetic Energy (TKE)
-as well as the dissipation of TKE, to aid in the design and training of ML-enhanced schemes.
+as well as the dissipation of TKE, to aid in the design and training of data-driven models of the subgrid processes.
 
-In the training the notebooks, a coefficient, C14, related to the dissipation of TKE, through the dissipation of
+In the training notebooks, a coefficient, C14, related to the dissipation of TKE, through the dissipation of
 horizontal velocity variances, is the initial parameter of interest. Currently, this
-coefficient is set to a constant value, but high resolution simulations reveal vertical
-structure and regime dependence. We hope to utilize high-resolution, LES data to
+coefficient is set to a constant value, but high-resolution simulations reveal vertical
+structure and regime dependence. We utilize high-resolution, LES data to
 develop a data-driven model of the coefficient. To provide labels for the supervised
-machine learning of this coefficient, mixing lengths are calculated through python
+machine learning of this coefficient, mixing lengths are calculated through Python
 routines which mirror Fortran algorithms used in CLUBB. Other variables are similarly
 regridded onto a coarse staggered grid, as that used in CLUBB, so that machine learning
 models ingest only coarse-scale variables. Data-driven models can therefore be implemented
@@ -64,7 +63,7 @@ in the coarser models with the hopes of improving weather and climate prediction
 
 The train notebooks aim to provide templates for a general workflow for the construction
 of data-driven subgrid parameterizations.
-Each one describes the training process for different models for C14 based on different datasets.
+Each one describes the training process for NN models of C14 based on different LES data.
 
 
 ## Developer and Contribution Guidelines
