@@ -1,6 +1,6 @@
-# CLUBBED: subgrid parameterization
+# CLUBBiNN: subgrid parameterization
 
-CLUBBED (Cloud Layers Unified By Binormals and Equation Discovery) is an equation discovery (ED) extension of Cloud Layers Unified By Binormals (CLUBB).
+CLUBBiNN (Cloud Layers Unified By Binormals and Neural Networks) is a machine learning (ML) extension of Cloud Layers Unified By Binormals (CLUBB) that allows specification of select terms by a Neural Network (NN).
 
 CLUBB is a boundary-layer cloud parameterization scheme
 principally developed by the research group of Vince Larson and subject to the copyright detailed in
@@ -8,14 +8,14 @@ principally developed by the research group of Vince Larson and subject to the c
 The source code for the latest release can be found at [github/larson-group/clubb_release](https://github.com/larson-group/clubb_release).
 
 This repository contains a Python package (`subgrid_parameterization`) of code used in developing
-the CLUBBED extension to CLUBB.
+the CLUBBiNN extension to CLUBB.
 It also contains a number of notebooks used in data analysis and training of the schemes.
 
 
 ## subgrid_parameterization
 
 `subgrid_parameterization` is a Python package containing functions and utilities that are
-repeatedly used in the development of CLUBBED and the associated notebooks.
+repeatedly used in the development of CLUBBiNN and the associated notebooks.
 Its source code is contained inside the `src/subgrid_parameterization/` directory.
 
 It can be installed as a Python package using pip by cloning this repository, navigating to it,
@@ -49,12 +49,12 @@ respective directories.
 
 The analysis notebooks use processed Large-Eddy Simulation (LES) data, e.g. of the BOMEX
 and DYCOMS cases including turbulence statistics such as Turbulent Kinetic Energy (TKE)
-as well as the dissipation of TKE, to aid in the design and training of ML schemes.
+as well as the dissipation of TKE, to aid in the design and training of ML-enhanced schemes.
 
-A coefficient, C14, related to the dissipation of TKE, through the dissipation of
+In the training the notebooks, a coefficient, C14, related to the dissipation of TKE, through the dissipation of
 horizontal velocity variances, is the initial parameter of interest. Currently, this
 coefficient is set to a constant value, but high resolution simulations reveal vertical
-structure and regime dependence. We hope to utilize the same high resolution data to
+structure and regime dependence. We hope to utilize high-resolution, LES data to
 develop a data-driven model of the coefficient. To provide labels for the supervised
 machine learning of this coefficient, mixing lengths are calculated through python
 routines which mirror Fortran algorithms used in CLUBB. Other variables are similarly
@@ -113,7 +113,7 @@ Now the formatting and linting will be applied on each commit.
 
 ## Authors and Licensing
 
-The CLUBBED project is led by [Alex Connolly](https://adconnolly.github.io/) of the
+The CLUBBiNN project is led by [Alex Connolly](https://adconnolly.github.io/) of the
 [Gentine Lab](https://gentinelab.eee.columbia.edu/home) at Columbia University.
 
 Research Software Engineering support to the project has been provided by
@@ -121,4 +121,4 @@ Research Software Engineering support to the project has been provided by
 [Institute of Computing for Climate Science (ICCS)](https://iccs.cam.ac.uk/).
 
 The project is associated with improving the CLUBB code, the license for which can be found in 
-[`LICENSE_CLUBB`](https://github.com/adconnolly/CLUBBED/blob/main/LICENSE_CLUBB).
+[`LICENSE_CLUBB`](https://github.com/adconnolly/CLUBBiNN/blob/main/LICENSE_CLUBB).
