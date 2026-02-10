@@ -77,7 +77,9 @@ class TestSAMDataInterface:
         for dim in ["y", "x"]:
             # We expand the dataset along a dimension
             temp = ds.copy(deep=True)
-            temp.coords[dim].values[0] = ds.coords[dim].values[0] + 1.0
+            vals = temp.coords[dim].to_numpy().copy()
+            vals[0] = ds.coords[dim].to_numpy()[0] + 1.0
+            temp = temp.assign_coords({dim: vals})
             combined = xr.concat([ds, temp], dim=dim, data_vars="minimal")
 
             with pytest.raises(ValueError):
