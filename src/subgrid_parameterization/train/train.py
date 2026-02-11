@@ -3,6 +3,7 @@
 import warnings
 import numpy as np
 import torch
+import os
 
 
 class EarlyStopper:
@@ -90,6 +91,12 @@ class Trainer:
         criterion = torch.nn.MSELoss()
         lossmin = np.inf
 
+        net_path = save_name + "_net.pt"
+        optim_path = save_name + "_optim.pt"
+        for path in [net_path, optim_path]:
+            if os.path.exists(path):
+                os.remove(path)
+
         for epoch in range(self.config["epochs"]):
             train_samples = 0
             train_running_loss = 0.0
@@ -121,9 +128,10 @@ class Trainer:
                 x_data = x_data.to(self.device)
                 y_data = y_data.to(self.device)
 
-                optimizer.zero_grad()
                 output = model(x_data)  ## Takes in Q, outputs \hat{S}
-                val_loss = criterion(output, y_data)
+                val_loss = criterion(
+                    output * self.lossweights, y_data * self.lossweights
+                )
 
                 ## Store loss values
                 valid_running_loss += val_loss.detach() * x_data.shape[0]
@@ -138,19 +146,17 @@ class Trainer:
                 break
             if valid_running_loss < lossmin:
                 lossmin = valid_running_loss
-                torch.save(model.state_dict(), save_name + "_net.pt")
-                torch.save(optimizer.state_dict(), save_name + "_optim.pt")
+                torch.save(model.state_dict(), net_path)
+                torch.save(optimizer.state_dict(), optim_path)
 
             # Push loss values for each epoch to wandb
             log_dic = {}
             log_dic["epoch"] = epoch
-            log_dic["training_loss"] = (
-                (train_running_loss / train_samples).cpu().numpy()
-            )
-            log_dic["valid_loss"] = (valid_running_loss / valid_samples).cpu().numpy()
+            log_dic["training_loss"] = (train_running_loss).cpu().numpy()
+            log_dic["valid_loss"] = (valid_running_loss).cpu().numpy()
             # wandb.log(log_dic)
-            self.train_loss.append((train_running_loss / train_samples).cpu().numpy())
-            self.test_loss.append((valid_running_loss / valid_samples).cpu().numpy())
+            self.train_loss.append((train_running_loss).cpu().numpy())
+            self.test_loss.append((valid_running_loss).cpu().numpy())
 
             if verbose:
                 print(
@@ -164,10 +170,10 @@ class Trainer:
             warnings.warn(
                 "Trainer.train_loop: No training occurred (epochs=0). Saving initial model state."
             )
-            torch.save(model.state_dict(), save_name + "_net.pt")
+            torch.save(model.state_dict(), net_path)
         # Load the best performing (lowest loss) model and return
         model.load_state_dict(
-            torch.load(save_name + "_net.pt", weights_only=True)
+            torch.load(net_path, weights_only=True)
         )  # ,map_location=device),strict=False)
 
         return model

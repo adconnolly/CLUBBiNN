@@ -6,20 +6,18 @@ import numpy as np
 import torch
 
 
-## Construct a convolutional block
+## Construct a linear layer
 def make_layer(
     in_features: int,
     out_features: int,
     activation=torch.nn.ReLU,
-    batch_norm=False,
     bias=False,
 ) -> list:
     """Pack ANN layer and optionally ReLU/BatchNorm2d layers in a list."""
     layer = [torch.nn.Linear(in_features, out_features, bias=bias)]
     if activation is not None:
         layer.append(activation())
-    if batch_norm:
-        layer.append(torch.nn.BatchNorm2d(out_features))
+
     return layer
 
 
@@ -41,8 +39,7 @@ class ANN(torch.nn.Module):
                     in_features=n_a,
                     out_features=n_b,
                     activation=activation,
-                    batch_norm=False,
-                    bias=False,
+                    bias=True,
                 )
             )
         # Final layer: no activation
@@ -52,8 +49,7 @@ class ANN(torch.nn.Module):
                 in_features=n_a,
                 out_features=n_b,
                 activation=None,
-                batch_norm=False,
-                bias=False,
+                bias=True,
             )
         )
         # Bundle into Sequential for forward pass
@@ -86,8 +82,7 @@ class Clipped_ANN(torch.nn.Module):
                     in_features=n_a,
                     out_features=n_b,
                     activation=activation,
-                    batch_norm=False,
-                    bias=False,
+                    bias=True,
                 )
             )
         # Final layer: no activation
@@ -97,15 +92,20 @@ class Clipped_ANN(torch.nn.Module):
                 in_features=n_a,
                 out_features=n_b,
                 activation=None,
-                batch_norm=False,
-                bias=False,
+                bias=True,
             )
         )
+        # Keeping pre-bounding outputs ~0 so the grad is larger
+        torch.nn.init.zeros_(ops[-1].bias)
+        torch.nn.init.normal_(ops[-1].weight, mean=0.0, std=1e-3)
         # Bundle into Sequential for forward pass
         self.ops = torch.nn.Sequential(*ops)
 
-        self.min, self.max = clamping_range
+        self.min = clamping_range[0]
+        self.range = clamping_range[1] - clamping_range[0]
 
     def forward(self, x):
-        """Execute the forward method pasisng tensor through self.ops()."""
-        return self.ops(x).clamp(min=self.min, max=self.max)
+        """Execute the forward method pasisng tensor through self.ops().
+        Use affine of sigmoid to bound final output between min, max.
+        """
+        return self.min + self.range * torch.sigmoid(self.ops(x))
