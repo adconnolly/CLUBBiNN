@@ -251,15 +251,19 @@ class SAMDataInterface:
         # We need to infer the edges of the SAM grid cells from the mid-point values
         # We assume that the grid starts at ground level
         sam_z = np.asarray(self._sam_dataset["z"].values, dtype=np.float64)
-        sam_z_edges = self.edges_from_midpoints(0.0, sam_z)
-
-        # Store projection matrices from SAM grid to CLUBB grids
-        self._z_to_zm_matrix = self.create_projection_matrix(
-            grids.zm_cell_edges, sam_z_edges
-        )
-        self._z_to_zt_matrix = self.create_projection_matrix(
-            grids.zt_cell_edges, sam_z_edges
-        )
+        if np.isclose(2.0 * sam_z[0], sam_z[1]):
+            sam_nz = len(sam_z)
+            self._z_to_zm_matrix = self.create_subsample_matrix(sam_nz, start=0)
+            self._z_to_zt_matrix = self.create_subsample_matrix(sam_nz, start=1)
+        else:
+            sam_z_edges = self.edges_from_midpoints(0.0, sam_z)
+            # Store projection matrices from SAM grid to CLUBB grids
+            self._z_to_zm_matrix = self.create_projection_matrix(
+                grids.zm_cell_edges, sam_z_edges
+            )
+            self._z_to_zt_matrix = self.create_projection_matrix(
+                grids.zt_cell_edges, sam_z_edges
+            )
 
     @property
     def clubb_grids(self) -> CLUBBGrids:
@@ -418,6 +422,35 @@ class SAMDataInterface:
                 0.0, np.minimum(x_t, y_t) - np.maximum(x_b, y_b)
             ) / (y_t - y_b)
         return scipy.sparse.csr_array(matrix)
+
+    @staticmethod
+    def create_subsample_matrix(n, start=0):
+        """
+        Create sparse matrix that selects every other element.
+
+        Parameters
+        ----------
+        n : int
+            Size of original vector.
+        start : {0, 1}
+            0 -> x[0], x[2], ...
+            1 -> x[1], x[3], ...
+        """
+        if start not in (0, 1):
+            raise ValueError("start must be 0 or 1")
+
+        m0 = (n + 1) // 2  # length for start=0
+
+        if start == 0:
+            m = m0
+        else:
+            m = m0 - 1
+
+        rows = np.arange(m)
+        cols = start + 2 * rows
+        data = np.ones(m)
+
+        return scipy.sparse.csr_matrix((data, (rows, cols)), shape=(len(rows), n))
 
     def get_sam_variable_on_clubb_grid(
         self, varname: str, grid_type: str

@@ -3,7 +3,7 @@ import numpy as np
 import subgrid_parameterization.preprocess.saminterface as sam
 
 
-def preprocess(files, data_root=""):
+def preprocess(files, C14min=0.2, C14max=2, data_root=""):
     """
     Loop through files and return network inputs and outputs.
 
@@ -33,9 +33,13 @@ def preprocess(files, data_root=""):
         # Create a CLUBB momentum grid and the dataset
         z_sam = np.asarray(ds["z"], dtype=np.float64)
         nzm = (len(z_sam) + 1) // 2
-        zm = np.concatenate(
-            ([0], 0.5 * (z_sam[1 : 2 * nzm - 1 : 2] + z_sam[2 : 2 * nzm - 1 : 2]))
-        )
+        if np.isclose(2.0 * z_sam[0], z_sam[1]):
+            zm = np.concatenate(([0], z_sam[2 : 2 * nzm - 1 : 2]))
+            print("Combined staggered grids")
+        else:
+            zm = np.concatenate(
+                ([0], 0.5 * (z_sam[1 : 2 * nzm - 1 : 2] + z_sam[2 : 2 * nzm - 1 : 2]))
+            )
         grids = sam.CLUBBGrids.from_momentum_grid(zm)
         sam_ds = sam.SAMDataInterface(ds, grids)
 
@@ -50,8 +54,7 @@ def preprocess(files, data_root=""):
         wp2 = sam_ds.get_sam_variable_on_clubb_grid("W2", "zt")
         e = 0.5 * (up2 + vp2 + wp2)
         disp = sam_ds.get_disp()
-        C14min = 0.2
-        C14max = 2
+
         minMask = disp < -2 / 3 * C14min / L * e**1.5
         maxMask = e > (-1.5 * disp * L / C14max) ** (2 / 3)
 
