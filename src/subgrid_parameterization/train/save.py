@@ -53,7 +53,9 @@ def save_model(
     """
     Save a TorchScript version of the model and a metadata JSON file.
 
-    The mode will be saved to ``filename.pt``, the metadata will be saved to
+    The model will be saved to ``filename.pt``, the metadata will be saved to
+    ``filename_metadata.json``.
+
 
     Parameters
     ----------
