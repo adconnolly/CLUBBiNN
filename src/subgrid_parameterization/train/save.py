@@ -2,6 +2,7 @@ import os
 import json
 import torch
 import subprocess
+import warnings
 
 
 def get_git_info(repo_dir="."):
@@ -38,6 +39,54 @@ def get_git_info(repo_dir="."):
         return {"branch": branch, "commit": commit}
     except subprocess.CalledProcessError:
         return {}
+
+
+def validate_var_list(var_list, var_type):
+    """
+    Validate and optionally normalize a list of variable dictionaries.
+
+    Parameters
+    ----------
+    var_list : list of dict
+        List of variable dictionaries to validate
+    var_type : str
+        Type of variables ('input' or 'output') for error messages
+
+    Returns
+    -------
+    list of dict
+        Validated and optionally normalized variable list
+    """
+    if not var_list:
+        return var_list
+
+    validated_vars = []
+    required_keys = {"name", "units"}
+
+    for i, var in enumerate(var_list):
+        if not isinstance(var, dict):
+            raise ValueError(
+                f"{var_type} variable at index {i} must be a dictionary, got {type(var)}"
+            )
+
+        # Check for missing required keys
+        missing_keys = required_keys - set(var.keys())
+        if missing_keys:
+            warnings.warn(
+                f"Missing required keys in {var_type} variable at index {i}: {missing_keys}. "
+                f"Current keys: {list(var.keys())}. "
+            )
+
+        # Create new dict with required and optional keys
+        validated_var = {"name": var.get("name"), "units": var.get("units")}
+
+        # Add shape if present
+        if "shape" in var:
+            validated_var["shape"] = var.get("shape")
+
+        validated_vars.append(validated_var)
+
+    return validated_vars
 
 
 def save_model(
@@ -95,6 +144,12 @@ def save_model(
     else:
         scripted_model = torch.jit.script(model)
     scripted_model.save(scripted_path)
+
+    # Validate input and output variables
+    if input_vars is not None:
+        input_vars = validate_var_list(input_vars, "input")
+    if output_vars is not None:
+        output_vars = validate_var_list(output_vars, "output")
 
     # Gather and save metadata
     metadata = {
