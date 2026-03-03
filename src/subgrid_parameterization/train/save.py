@@ -61,7 +61,7 @@ def validate_var_list(var_list, var_type):
         return var_list
 
     validated_vars = []
-    required_keys = {"name", "units"}
+    required_keys = {"name", "desc"}
 
     for i, var in enumerate(var_list):
         if not isinstance(var, dict):
@@ -78,7 +78,7 @@ def validate_var_list(var_list, var_type):
             )
 
         # Create new dict with required and optional keys
-        validated_var = {"name": var.get("name"), "units": var.get("units")}
+        validated_var = {"name": var.get("name"), "desc": var.get("desc")}
 
         # Add shape if present
         if "shape" in var:
@@ -98,6 +98,7 @@ def save_model(
     output_vars=None,
     metrics=None,
     train_config=None,
+    other_notes=None,
 ):
     """
     Save a TorchScript version of the model and a metadata JSON file.
@@ -119,20 +120,61 @@ def save_model(
         scripting will be used.
     input_vars : list of dict, optional
         List of dictionaries describing input variables.
-        [{"name": ..., "units": ..., "shape": ...}, ...].
+        [{"name": ..., "desc": ..., "shape": ...}, ...].
     output_vars : list of dict, optional
         List of dictionaries describing output variables.
-        [{"name": ..., "units": ..., "shape": ...}, ...].
+        [{"name": ..., "desc": ..., "shape": ...}, ...].
     metrics : dict, optional
         Dictionary of performance metrics.
-        {"loss": ..., "R2": ...}.
+        {"loss": ..., "R2": ..., "train_R2": ..., "val_R2": ..., "steps": ...,
+         "early_stop_time": ...}.
     train_config : dict, optional
         Training configuration dictionary.
         {"input_dataset": ..., etc.}
+    other_notes : str, optional
+        Additional notes about the training run.
 
     Returns
     -------
     None
+
+    Examples
+    --------
+    >>> # Model to be saved and example input tensor
+    >>> model = MyModel()
+    >>> input_example = torch.randn(10, 5)
+    >>> input_vars = [
+    ...     {"name": "temperature", "desc": "Normalized temperature field", "shape": [10, 5]},
+    ...     {"name": "pressure", "desc": "Normalized pressure field", "shape": [10, 5]}
+    ... ]
+    >>> output_vars = [{"name": "prediction", "desc": "Model output", "shape": [10, 1]}]
+    >>> metrics = {
+    ...     "loss": 0.05,
+    ...     "R2": 0.95,
+    ...     "train_R2": 0.96,
+    ...     "val_R2": 0.94,
+    ...     "steps": 5000,
+    ...     "early_stop_time": 200
+    ... }
+    >>> train_config = {
+    ...     "train_dataset": "/data/train_dataset.nc",
+    ...     "val_dataset": "/data/val_dataset.nc",
+    ...     "Hscale": 100.0,
+    ...     "LMax": 1000.0
+    ... }
+    >>> other_notes = "Training completed successfully with early stopping"
+    >>>
+    >>> save_model(
+    ...     model=model,
+    ...     save_dir="./saved_models",
+    ...     filename="my_trained_model",
+    ...     input_example=input_example,
+    ...     input_vars=input_vars,
+    ...     output_vars=output_vars,
+    ...     metrics=metrics,
+    ...     train_config=train_config,
+    ...     other_notes=other_notes
+    ... )
     """
     os.makedirs(save_dir, exist_ok=True)
     scripted_path = os.path.join(save_dir, f"{filename}.pt")
@@ -160,6 +202,10 @@ def save_model(
         "config": train_config,
         "git": get_git_info(),
     }
+
+    # Add other_notes if provided
+    if other_notes is not None:
+        metadata["other_notes"] = other_notes
 
     with open(metadata_path, "w") as f:
         json.dump(metadata, f, indent=2)

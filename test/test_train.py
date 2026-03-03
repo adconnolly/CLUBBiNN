@@ -173,13 +173,89 @@ class TestSave:
         assert "branch" in info
         assert "commit" in info
 
-    def test_save_model(self):
+    def test_valid_vars(self):
+        """Test that valid variables pass through unchanged."""
+        input_vars = [
+            {
+                "name": "temp",
+                "desc": "Temperature field normalised by surface value",
+                "shape": [10, 5],
+            },
+            {
+                "name": "pressure",
+                "desc": "Pressure field normalised by surface value",
+                "shape": [10, 5],
+            },
+        ]
+        from subgrid_parameterization.train.save import validate_var_list
+
+        result = validate_var_list(input_vars, "input")
+        assert result == input_vars
+
+    def test_missing_required_keys(self):
+        """Test that missing required keys trigger warnings."""
+        invalid_vars = [
+            {"desc": "Temperature normalised by sfc", "shape": [10, 5]},
+            {"name": "pressure"},
+        ]
+        from subgrid_parameterization.train.save import validate_var_list
+
+        with pytest.warns(UserWarning) as warning_info:
+            result = validate_var_list(invalid_vars, "input")
+
+        # Check that warnings were raised
+        assert len(warning_info) == 2
+        assert "Missing required keys" in str(warning_info[0].message)
+        assert "Missing required keys" in str(warning_info[1].message)
+
+        # Check that variables with missing keys are still included
+        assert len(result) == 2
+        assert result[0]["desc"] == "Temperature normalised by sfc"
+        assert result[1]["name"] == "pressure"
+
+    def test_non_dict_variables(self):
+        """Test that non-dict variables raise ValueError."""
+        invalid_vars = [
+            {"name": "temp", "desc": "Temperature normalised by surface value"},
+            "not_a_dict",  # This should raise an error
+            {"name": "pressure", "desc": "Pressure normalised by surface value"},
+        ]
+        from subgrid_parameterization.train.save import validate_var_list
+
+        with pytest.raises(
+            ValueError, match="input variable at index 1 must be a dictionary"
+        ):
+            validate_var_list(invalid_vars, "input")
+
+    def test_save_model_with_extended_metadata(self):
+        """Test saving model with metadata fields."""
         model = DummyModel(2, 1)
         input_example = torch.randn(3, 2)
-        input_vars = [{"name": "x1", "units": "none"}, {"name": "x2", "units": "none"}]
-        output_vars = [{"name": "y", "units": "none"}]
-        metrics = {"loss": 0.1, "R2": 0.9}
-        train_config = {"epochs": 1}
+        input_vars = [
+            {"name": "x1", "desc": "First input feature", "shape": [3, 2]},
+            {"name": "x2", "desc": "Second input feature", "shape": [3, 2]},
+        ]
+        output_vars = [{"name": "y", "desc": "Output prediction", "shape": [3, 1]}]
+
+        # Extended metrics
+        metrics = {
+            "loss": 0.1,
+            "R2": 0.9,
+            "train_R2": 0.92,
+            "val_R2": 0.88,
+            "steps": 1000,
+            "early_stop_time": 50,
+        }
+
+        # Extended config
+        train_config = {
+            "train_dataset": "/full/path/to/train_data.nc",
+            "val_dataset": "/full/path/to/val_data.nc",
+            "Hscale": 100.0,
+            "LMax": 1000.0,
+        }
+
+        other_notes = "This is a test run with extended metadata"
 
         with tempfile.TemporaryDirectory() as tmpdir:
             filename = "test_model"
@@ -192,6 +268,7 @@ class TestSave:
                 output_vars=output_vars,
                 metrics=metrics,
                 train_config=train_config,
+                other_notes=other_notes,
             )
             pt_path = os.path.join(tmpdir, f"{filename}.pt")
             meta_path = os.path.join(tmpdir, f"{filename}_metadata.json")
@@ -217,46 +294,4 @@ class TestSave:
             assert meta["output_vars"] == output_vars
             assert meta["metrics"] == metrics
             assert meta["config"] == train_config
-
-    def test_valid_vars(self):
-        """Test that valid variables pass through unchanged."""
-        input_vars = [
-            {"name": "temp", "units": "K", "shape": [10, 5]},
-            {"name": "pressure", "units": "Pa", "shape": [10, 5]},
-        ]
-        from subgrid_parameterization.train.save import validate_var_list
-
-        result = validate_var_list(input_vars, "input")
-        assert result == input_vars
-
-    def test_missing_required_keys(self):
-        """Test that missing required keys trigger warnings."""
-        invalid_vars = [{"units": "K", "shape": [10, 5]}, {"name": "pressure"}]
-        from subgrid_parameterization.train.save import validate_var_list
-
-        with pytest.warns(UserWarning) as warning_info:
-            result = validate_var_list(invalid_vars, "input")
-
-        # Check that warnings were raised
-        assert len(warning_info) == 2
-        assert "Missing required keys" in str(warning_info[0].message)
-        assert "Missing required keys" in str(warning_info[1].message)
-
-        # Check that variables with missing keys are still included
-        assert len(result) == 2
-        assert result[0]["units"] == "K"
-        assert result[1]["name"] == "pressure"
-
-    def test_non_dict_variables(self):
-        """Test that non-dict variables raise ValueError."""
-        invalid_vars = [
-            {"name": "temp", "units": "K"},
-            "not_a_dict",  # This should raise an error
-            {"name": "pressure", "units": "Pa"},
-        ]
-        from subgrid_parameterization.train.save import validate_var_list
-
-        with pytest.raises(
-            ValueError, match="input variable at index 1 must be a dictionary"
-        ):
-            validate_var_list(invalid_vars, "input")
+            assert meta["other_notes"] == other_notes
