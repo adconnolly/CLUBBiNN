@@ -594,38 +594,44 @@ class SAMDataInterface:
 
     def get_C14(self) -> npt.NDArray[np.float64]:
         """
-        Compute the C14 parameter from the SAM dataset projected onto the CLUBB thermodynamic grid.
+        Compute the C14 parameter from the SAM dataset projected onto the CLUBB momentum grid.
 
         Returns
         -------
         numpy.ndarray[np.float64]
-            C14 parameter on the CLUBB thermodynamic grid.
+            C14 parameter on the CLUBB momentum grid.
         """
         # Need to provide this one
         # L = self.get_sam_variable_on_clubb_grid("mixing_length", "zt")
         mixing_length, _, _ = self.get_mixing_length()
+        mixing_length_zm = np.array(
+            [
+                np.interp(self._grids.zm, self._grids.zt, mixing_length[icol])
+                for icol in range(mixing_length.shape[0])
+            ]
+        )
 
-        u2 = self.get_sam_variable_on_clubb_grid("U2", "zt")
-        v2 = self.get_sam_variable_on_clubb_grid("V2", "zt")
-        w2 = self.get_sam_variable_on_clubb_grid("W2", "zt")
+        u2 = self.get_sam_variable_on_clubb_grid("U2", "zm")
+        v2 = self.get_sam_variable_on_clubb_grid("V2", "zm")
+        w2 = self.get_sam_variable_on_clubb_grid("W2", "zm")
         e = 0.5 * (u2 + v2 + w2)
 
-        u2DFSN = self.get_sam_variable_on_clubb_grid("U2DFSN", "zt")
-        v2DFSN = self.get_sam_variable_on_clubb_grid("V2DFSN", "zt")
+        u2DFSN = self.get_sam_variable_on_clubb_grid("U2DFSN", "zm")
+        v2DFSN = self.get_sam_variable_on_clubb_grid("V2DFSN", "zm")
         disp = 0.5 * (u2DFSN + v2DFSN)
 
-        return -3.0 / 2.0 * mixing_length / e**1.5 * disp
+        return -3.0 / 2.0 * mixing_length_zm / e**1.5 * disp
 
     def get_disp(self) -> npt.NDArray[np.float64]:
         """
-        Compute the dispersion from the SAM dataset on the CLUBB thermodynamic grid.
+        Compute the dissipation from the SAM dataset on the CLUBB momentum grid.
 
         Returns
         -------
         numpy.ndarray[np.float64]
-            Dispersion parameter on the CLUBB thermodynamic grid.
+            Dissipation on the CLUBB momentum grid.
         """
-        u2DFSN = self.get_sam_variable_on_clubb_grid("U2DFSN", "zt")
-        v2DFSN = self.get_sam_variable_on_clubb_grid("V2DFSN", "zt")
+        u2DFSN = self.get_sam_variable_on_clubb_grid("U2DFSN", "zm")
+        v2DFSN = self.get_sam_variable_on_clubb_grid("V2DFSN", "zm")
         disp = 0.5 * (u2DFSN + v2DFSN)
         return disp
