@@ -1,0 +1,47 @@
+{
+  "model_class": "Clipped_ANN",
+  "input_vars": [
+    {
+      "name": "up2",
+      "desc": "Variance of the x wind component"
+    },
+    {
+      "name": "vp2",
+      "desc": "Variance of the y wind component"
+    },
+    {
+      "name": "wp2",
+      "desc": "Variance of the z wind component"
+    },
+    {
+      "name": "Lup",
+      "desc": "Upward mixing length scale"
+    },
+    {
+      "name": "Ldown",
+      "desc": "Downward mixing length scale"
+    }
+  ],
+  "output_vars": [
+    {
+      "name": "C_14",
+      "desc": "Predicted C_14 coefficient"
+    }
+  ],
+  "metrics": {
+    "loss": 0.03036064854008572,
+    "train_R2": 0.8024108580711216,
+    "val_R2": 0.798286925683624,
+    "steps": 345,
+    "early_stop_time": 325
+  },
+  "config": {
+    "train_dataset": "/data/train_dataset.nc",
+    "Hscale": 1000.0
+  },
+  "git": {
+    "branch": "26-saving-and-metadata-review",
+    "commit": "d92b8824a253f80e3cf5585972f6e406a0615212"
+  },
+  "other_notes": "Training completed successfully with early stopping"
+}
