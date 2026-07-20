@@ -54,6 +54,7 @@ class Trainer:
         valid_loader: torch.utils.data.DataLoader,
         save_name: str,
         verbose=False,
+        scheduler=None,
     ) -> torch.nn.Module:
         """
         Run training loop for given model using provided data loaders and optimizer.
@@ -163,7 +164,11 @@ class Trainer:
                     f"{log_dic['epoch']:03d} "
                     f"{log_dic['training_loss']:.3e} "
                     f"{log_dic['valid_loss']:.3e}"
+                    # print('LR: ', optimizer.param_groups[0]["lr"])
                 )
+                print("LR: ", optimizer.param_groups[0]["lr"])
+            if scheduler != None:
+                scheduler.step()
 
         # If no training occurred, save initial model so load does not fail
         if self.config["epochs"] <= 0:
@@ -176,4 +181,5 @@ class Trainer:
             torch.load(net_path, weights_only=True)
         )  # ,map_location=device),strict=False)
 
+        print(log_dic)
         return model
