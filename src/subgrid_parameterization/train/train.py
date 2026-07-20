@@ -181,5 +181,5 @@ class Trainer:
             torch.load(net_path, weights_only=True)
         )  # ,map_location=device),strict=False)
 
-        print(log_dic)
+        # print(log_dic)
         return model
